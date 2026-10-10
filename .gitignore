@@ -1,0 +1,12 @@
+.env
+node_modules/
+data/progress.json
+*.log
+playwright-report/
+test-results/
+.vercel/
+.env.local
+.env.*
+!.env.example
+coverage/
+.DS_Store

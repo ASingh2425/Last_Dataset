@@ -1,0 +1,18 @@
+{
+  "name": "the-last-dataset-map-hub",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Cinematic survival-game hub with server-enforced progression and durable serverless storage support",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "test": "node --test",
+    "dev:solve": "node scripts/dev-solve.js",
+    "reset:data": "node scripts/reset-data.js",
+    "vercel:dev": "npx vercel dev"
+  }
+}

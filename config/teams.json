@@ -1,0 +1,7 @@
+{
+  "mode": "open",
+  "allowedIds": [],
+  "teamIdPattern": "^[A-Za-z0-9-]{3,32}$",
+  "teamNamePattern": "^[\\p{L}\\p{N} .,'’_()-]{2,40}$",
+  "notes": "Open registration by default. For whitelist mode set mode to whitelist and list allowed Team IDs in allowedIds. IDs are normalized to uppercase. A team name locks on first registration."
+}
