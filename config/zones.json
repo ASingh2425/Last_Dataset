@@ -50,7 +50,7 @@
       "tagline": "THE BURNING REFINERY",
       "terrain": "The refinery burns on an endless loop. Forensic integrity is melting in the heat.",
       "position": { "x": 77, "y": 68 },
-      "url": "https://orange-zone-final.vercel.app/",
+      "url": "https://or-light.vercel.app/",
       "transitionSlideshow": "https://orange-to-red-slideshow.vercel.app/transition/radio-forensics",
       "rewardDataset": "forensics_final",
       "ctfs": [
@@ -58,7 +58,7 @@
           "id": "orange-01",
           "title": "Burning Refinery Forensics",
           "briefing": "Recover the Forensics dataset fragment.",
-          "url": "https://orange-zone-final.vercel.app/",
+          "url": "https://or-light.vercel.app/",
           "completion": { "method": "hmac-sha256", "secretEnv": "CTF_SECRET_ORANGE_01" }
         }
       ]
