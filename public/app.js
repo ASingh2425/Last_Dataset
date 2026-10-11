@@ -230,7 +230,10 @@
 
     const targetUrl = ZONE_URLS[zoneId] || zone.url;
     if (targetUrl) {
-      window.open(targetUrl, '_blank', 'noopener,noreferrer');
+      const urlWithTeam = hub?.team?.id
+        ? `${targetUrl}${targetUrl.includes('?') ? '&' : '?'}team=${encodeURIComponent(hub.team.id)}`
+        : targetUrl;
+      window.open(urlWithTeam, '_blank', 'noopener,noreferrer');
       toast(`DISPATCHED TO ${zone.name} ↗ (ACTIVE IN NEW TAB)`);
     } else {
       await showZone(zoneId);
@@ -592,15 +595,16 @@
         toast('SANCTUARY GATE BREACHED · YELLOW ZONE UNLOCKED!');
       }
     };
-    window.addEventListener('focus', checkSanctuaryStatus);
+    window.addEventListener('focus', () => { refreshBootstrap({ animate: true }); });
     document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') checkSanctuaryStatus();
+      if (document.visibilityState === 'visible') refreshBootstrap({ animate: true });
     });
-    setInterval(() => {
-      if (document.body.dataset.screen === 'map' && hub?.authenticated && !hub?.sanctuaryCompleted) {
-        checkSanctuaryStatus();
+    window.addEventListener('message', (event) => {
+      if (event.data?.type === 'ZONE_COMPLETED') {
+        refreshBootstrap({ animate: true });
+        toast('SECTOR PROGRESS SYNCHRONIZED · VAULT UPDATED');
       }
-    }, 3500);
+    });
     $('#logout-button').addEventListener('click', async () => {
       try { await api('/api/logout', { method: 'POST', body: {} }); hub = null; setSound(false); await navigate('hero', { saveView: false, force: true }); toast('SESSION DISCONNECTED. YOUR TEAM PROGRESS IS PRESERVED.'); }
       catch (error) { toast(error.message || 'Could not disconnect.', true); }
