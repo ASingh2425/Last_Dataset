@@ -1,48 +1,107 @@
 {
   "zones": [
     {
-      "id": "yellow", "name": "YELLOW ZONE", "color": "#f5c518", "order": 1,
-      "tagline": "INDUSTRIAL QUARANTINE", "terrain": "The assembly yards still hum beneath the dead power grid.", "position": {"x": 29, "y": 27},
+      "id": "yellow",
+      "name": "YELLOW ZONE",
+      "color": "#f5c518",
+      "order": 1,
+      "tagline": "INDUSTRIAL QUARANTINE",
+      "terrain": "The assembly yards still hum beneath the dead power grid.",
+      "position": { "x": 29, "y": 27 },
+      "url": "https://yellowzone-xi.vercel.app",
+      "transitionSlideshow": "https://yellow-to-blue-slideshow.vercel.app/",
+      "rewardDataset": "community_final",
       "ctfs": [
-        {"id":"yellow-01","title":"Challenge Pending · Y-01","briefing":"A corrupted signal was detected beneath the industrial quarantine. Recover the surviving record.","url":"/mock/ctf/yellow-01","completion":{"method":"hmac-sha256","secretEnv":"CTF_SECRET_YELLOW_01"}},
-        {"id":"yellow-02","title":"Challenge Pending · Y-02","briefing":"A fragmented archive is sealed behind a failing terminal. Determine which fragments can still be trusted.","url":"/mock/ctf/yellow-02","completion":{"method":"hmac-sha256","secretEnv":"CTF_SECRET_YELLOW_02"}},
-        {"id":"yellow-03","title":"Challenge Pending · Y-03","briefing":"The first quarantine log ends mid-transmission. Reconstruct the missing evidence.","url":"/mock/ctf/yellow-03","completion":{"method":"hmac-sha256","secretEnv":"CTF_SECRET_YELLOW_03"}}
+        {
+          "id": "yellow-01",
+          "title": "Industrial Quarantine Investigation",
+          "briefing": "Recover the Community dataset fragment.",
+          "url": "https://yellowzone-xi.vercel.app",
+          "completion": { "method": "hmac-sha256", "secretEnv": "CTF_SECRET_YELLOW_01" }
+        }
       ]
     },
     {
-      "id": "blue", "name": "BLUE ZONE", "color": "#56c8ff", "order": 2,
-      "tagline": "SUBMERGED SERVER FIELDS", "terrain": "Cold water has swallowed the server farms. Something still answers the ping.", "position": {"x": 73, "y": 24},
+      "id": "blue",
+      "name": "BLUE ZONE",
+      "color": "#56c8ff",
+      "order": 2,
+      "tagline": "SUBMERGED SERVER FIELDS",
+      "terrain": "Cold water has swallowed the server farms. Radio transmissions pulse through the static.",
+      "position": { "x": 73, "y": 24 },
+      "url": "https://bluezone-xi.vercel.app/",
+      "transitionSlideshow": "https://blue-orange-slideshow-ogib.vercel.app/transition/radio-forensics",
+      "rewardDataset": "radio_final",
       "ctfs": [
-        {"id":"blue-01","title":"Challenge Pending · B-01","briefing":"A submerged data vault is sending a signal through the static. Trace its origin.","url":"/mock/ctf/blue-01","completion":{"method":"hmac-sha256","secretEnv":"CTF_SECRET_BLUE_01"}},
-        {"id":"blue-02","title":"Challenge Pending · B-02","briefing":"The backup cluster disagrees with its own logs. Find the intact chain of evidence.","url":"/mock/ctf/blue-02","completion":{"method":"hmac-sha256","secretEnv":"CTF_SECRET_BLUE_02"}},
-        {"id":"blue-03","title":"Challenge Pending · B-03","briefing":"A cold-storage manifest survived the flood, but its records are out of order.","url":"/mock/ctf/blue-03","completion":{"method":"hmac-sha256","secretEnv":"CTF_SECRET_BLUE_03"}}
+        {
+          "id": "blue-01",
+          "title": "Submerged Server Fields Investigation",
+          "briefing": "Recover the Radio Comms dataset fragment.",
+          "url": "https://bluezone-xi.vercel.app/",
+          "completion": { "method": "hmac-sha256", "secretEnv": "CTF_SECRET_BLUE_01" }
+        }
       ]
     },
     {
-      "id": "orange", "name": "ORANGE ZONE", "color": "#ff8b3d", "order": 3,
-      "tagline": "THE BURNING REFINERY", "terrain": "The refinery burns on an endless loop. Data is melting in the heat.", "position": {"x": 77, "y": 68},
+      "id": "orange",
+      "name": "ORANGE ZONE",
+      "color": "#ff8b3d",
+      "order": 3,
+      "tagline": "THE BURNING REFINERY",
+      "terrain": "The refinery burns on an endless loop. Forensic integrity is melting in the heat.",
+      "position": { "x": 77, "y": 68 },
+      "url": "https://orange-zone-final.vercel.app/",
+      "transitionSlideshow": "https://orange-to-red-slideshow.vercel.app/transition/radio-forensics",
+      "rewardDataset": "forensics_final",
       "ctfs": [
-        {"id":"orange-01","title":"Challenge Pending · O-01","briefing":"A refinery sensor has recorded impossible readings. Separate the signal from the noise.","url":"/mock/ctf/orange-01","completion":{"method":"hmac-sha256","secretEnv":"CTF_SECRET_ORANGE_01"}},
-        {"id":"orange-02","title":"Challenge Pending · O-02","briefing":"The incident report has been scorched. Restore the sequence of events from the remnants.","url":"/mock/ctf/orange-02","completion":{"method":"hmac-sha256","secretEnv":"CTF_SECRET_ORANGE_02"}},
-        {"id":"orange-03","title":"Challenge Pending · O-03","briefing":"A machine keeps rewriting its own output. Identify the last trustworthy state.","url":"/mock/ctf/orange-03","completion":{"method":"hmac-sha256","secretEnv":"CTF_SECRET_ORANGE_03"}}
+        {
+          "id": "orange-01",
+          "title": "Burning Refinery Forensics",
+          "briefing": "Recover the Forensics dataset fragment.",
+          "url": "https://orange-zone-final.vercel.app/",
+          "completion": { "method": "hmac-sha256", "secretEnv": "CTF_SECRET_ORANGE_01" }
+        }
       ]
     },
     {
-      "id": "red", "name": "RED ZONE", "color": "#ff4058", "order": 4,
-      "tagline": "ACTIVE INFECTION HOTSPOT", "terrain": "The infection is thick enough to distort memory. Do not trust the first answer.", "position": {"x": 26, "y": 70},
+      "id": "red",
+      "name": "RED ZONE",
+      "color": "#ff4058",
+      "order": 4,
+      "tagline": "ACTIVE INFECTION HOTSPOT",
+      "terrain": "The infection is thick enough to distort memory. Research evidence consolidation.",
+      "position": { "x": 26, "y": 70 },
+      "url": "https://red-five-liart.vercel.app/",
+      "transitionSlideshow": "https://red-purple-slideshow.vercel.app/",
+      "rewardDataset": "research_final",
       "ctfs": [
-        {"id":"red-01","title":"Challenge Pending · R-01","briefing":"A forbidden archive is protected by layers of deliberate misinformation.","url":"/mock/ctf/red-01","completion":{"method":"hmac-sha256","secretEnv":"CTF_SECRET_RED_01"}},
-        {"id":"red-02","title":"Challenge Pending · R-02","briefing":"A terminal claims the incident never happened. Its process memory says otherwise.","url":"/mock/ctf/red-02","completion":{"method":"hmac-sha256","secretEnv":"CTF_SECRET_RED_02"}},
-        {"id":"red-03","title":"Challenge Pending · R-03","briefing":"The final infection report has been split across unreliable sources. Correlate the remnants.","url":"/mock/ctf/red-03","completion":{"method":"hmac-sha256","secretEnv":"CTF_SECRET_RED_03"}}
+        {
+          "id": "red-01",
+          "title": "Infection Telemetry & Research",
+          "briefing": "Recover the Research dataset fragment.",
+          "url": "https://red-five-liart.vercel.app/",
+          "completion": { "method": "hmac-sha256", "secretEnv": "CTF_SECRET_RED_01" }
+        }
       ]
     },
     {
-      "id": "purple", "name": "PURPLE ZONE", "color": "#bc8cff", "order": 5,
-      "tagline": "PRALAYA CORE", "terrain": "Reality fractures at the centre of the collapse. This is where the data died.", "position": {"x": 51, "y": 10},
+      "id": "purple",
+      "name": "PURPLE ZONE",
+      "color": "#bc8cff",
+      "order": 5,
+      "tagline": "PRALAYA CORE · ML SURVIVAL EVALUATOR",
+      "terrain": "Reality fractures at the centre of the collapse. Build your model to unlock the escape gate.",
+      "position": { "x": 51, "y": 10 },
+      "url": "https://purplezone-frontend.vercel.app/",
+      "rewardDataset": null,
       "ctfs": [
-        {"id":"purple-01","title":"Challenge Pending · P-01","briefing":"The core's first memory is fragmented between competing realities. Reconcile the truth.","url":"/mock/ctf/purple-01","completion":{"method":"hmac-sha256","secretEnv":"CTF_SECRET_PURPLE_01"}},
-        {"id":"purple-02","title":"Challenge Pending · P-02","briefing":"PRALAYA is replaying a corrupted world-state. Find the anomaly that breaks the loop.","url":"/mock/ctf/purple-02","completion":{"method":"hmac-sha256","secretEnv":"CTF_SECRET_PURPLE_02"}},
-        {"id":"purple-03","title":"Challenge Pending · P-03","briefing":"One final dataset remains. Recover it, and decide what survives the end.","url":"/mock/ctf/purple-03","completion":{"method":"hmac-sha256","secretEnv":"CTF_SECRET_PURPLE_03"}}
+        {
+          "id": "purple-01",
+          "title": "PRALAYA Core · ML Model Evaluation & Escape",
+          "briefing": "Reconstruct test.csv from all 4 dataset fragments and evaluate predictions to escape.",
+          "url": "https://purplezone-frontend.vercel.app/",
+          "completion": { "method": "hmac-sha256", "secretEnv": "CTF_SECRET_PURPLE_01" }
+        }
       ]
     }
   ]

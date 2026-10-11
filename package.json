@@ -14,5 +14,8 @@
     "dev:solve": "node scripts/dev-solve.js",
     "reset:data": "node scripts/reset-data.js",
     "vercel:dev": "npx vercel dev"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.117.3"
   }
 }

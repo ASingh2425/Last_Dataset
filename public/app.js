@@ -123,7 +123,7 @@
     const progress = zone.ctfTotal ? zone.solved / zone.ctfTotal : 0;
     const circumference = 2 * Math.PI * 44;
     const offset = circumference * (1 - progress);
-    const statusLabel = zone.state === 'locked' ? 'QUARANTINED' : zone.state === 'cleared' ? 'ZONE CLEARED' : zone.state === 'in-progress' ? `${zone.solved}/${zone.ctfTotal} RECOVERED` : `${zone.ctfTotal} SIGNALS DETECTED`;
+    const statusLabel = zone.state === 'locked' ? 'ZONE ACCESS LOCKED' : zone.state === 'cleared' ? 'ZONE CLEARED' : 'ACCESS AVAILABLE';
     const lock = zone.state === 'locked' ? `<g transform="translate(0,-1)"><rect class="lock-plate" x="-17" y="-15" width="34" height="31" rx="2" stroke-width="1"/><text class="lock-mark" x="0" y="4" text-anchor="middle">▣</text></g>` : '';
     const mark = zone.state === 'cleared' ? `<text class="zone-flag" x="0" y="5">✓</text>` : zone.state === 'locked' ? '' : `<text class="zone-symbol" x="0" y="1">${zoneIcons[zone.id] || '◇'}</text>`;
     return `<g class="zone-node ${zone.state === 'locked' ? 'locked' : ''} ${zone.state === 'cleared' ? 'cleared' : ''}" data-zone-id="${escapeHTML(zone.id)}" role="button" tabindex="0" aria-label="${escapeHTML(zone.name)} — ${escapeHTML(statusLabel)}" aria-disabled="${zone.unlocked ? 'false' : 'true'}" transform="translate(${x} ${y})" style="color:${escapeHTML(zone.color)}"><circle class="node-halo" r="66"/><circle class="node-ring" r="49"/><circle class="node-core" r="39"/><circle class="node-inner" r="31"/><circle class="progress-arc" r="44" stroke-dasharray="${circumference.toFixed(1)}" stroke-dashoffset="${offset.toFixed(1)}"/><circle r="57" fill="none" stroke="currentColor" stroke-opacity=".15" stroke-dasharray="2 12"/>${lock}${mark}<text class="node-name" x="0" y="70">${escapeHTML(zone.name)}</text><text class="node-subtitle" x="0" y="85">${escapeHTML(statusLabel)}</text></g>`;
@@ -151,7 +151,7 @@
   function showTooltip(zoneId, event) {
     const zone = zoneById(zoneId); if (!zone) return;
     const tip = $('#map-tooltip'); tip.hidden = false;
-    tip.innerHTML = `<strong style="color:${escapeHTML(zone.color)}">${escapeHTML(zone.name)}</strong>${zone.unlocked ? `${zone.ctfTotal} SIGNALS · ${zone.solved}/${zone.ctfTotal} RECOVERED` : 'LOCKED: CLEAR THE PREVIOUS ZONE TO BREAK THE QUARANTINE'}`;
+    tip.innerHTML = `<strong style="color:${escapeHTML(zone.color)}">${escapeHTML(zone.name)}</strong>${zone.unlocked ? (zone.state === 'cleared' ? 'ZONE CLEARED · FRAGMENT SECURED' : 'SECTOR UNLOCKED · CLICK TO ACCESS') : 'ZONE ACCESS LOCKED: COMPLETE SANCTUARY STORYLINE BRIEFING FIRST'}`;
     positionTooltip(event);
   }
   function positionTooltip(event) {
@@ -167,20 +167,55 @@
   function hideTooltip() { $('#map-tooltip').hidden = true; }
   let deniedTimer = null;
   function showDenied(zoneId) {
-    const zone = zoneById(zoneId); if (!zone) return;
-    const denied = $('#map-denied'); denied.hidden = false; denied.classList.remove('shake'); void denied.offsetWidth; denied.classList.add('shake');
-    $('#map-region-label').textContent = `REGION ${String(zone.order).padStart(2, '0')} / ACCESS DENIED`;
+    const zone = zoneById(zoneId);
+    const denied = $('#map-denied');
+    denied.hidden = false;
+    denied.classList.remove('shake');
+    void denied.offsetWidth;
+    denied.classList.add('shake');
+    $('#map-region-label').textContent = zone ? `REGION ${String(zone.order).padStart(2, '0')} / ZONE ACCESS LOCKED` : 'ZONE ACCESS LOCKED';
+    const sub = $('#map-denied-sub');
+    if (sub) {
+      sub.textContent = !hub?.sanctuaryCompleted
+        ? 'COMPLETE THE SANCTUARY STORYLINE BRIEFING TO ACCESS QUARANTINE ZONES'
+        : 'CLEAR THE PREVIOUS ZONE TO ACCESS THIS SECTOR';
+    }
+    toast('ZONE ACCESS LOCKED: Complete the Sanctuary storyline briefing first.', true);
     if (window.TLDScene) window.TLDScene.lurch();
-    clearTimeout(deniedTimer); deniedTimer = setTimeout(() => { denied.hidden = true; $('#map-region-label').textContent = 'REGION 00 / SANCTUARY'; }, 2500);
+    clearTimeout(deniedTimer);
+    deniedTimer = setTimeout(() => {
+      denied.hidden = true;
+      $('#map-region-label').textContent = 'REGION 00 / SANCTUARY';
+    }, 2800);
   }
+  const ZONE_URLS = {
+    yellow: 'https://yellowzone-xi.vercel.app',
+    blue: 'https://bluezone-xi.vercel.app/',
+    orange: 'https://orange-zone-final.vercel.app/',
+    red: 'https://red-five-liart.vercel.app/',
+    purple: 'https://purplezone-frontend.vercel.app/'
+  };
+
+  const STORY_TRANSITIONS = {
+    yellow: 'https://yellow-to-blue-slideshow.vercel.app/',
+    blue: 'https://blue-orange-slideshow-ogib.vercel.app/transition/radio-forensics',
+    orange: 'https://orange-to-red-slideshow.vercel.app/transition/radio-forensics',
+    red: 'https://red-purple-slideshow.vercel.app/'
+  };
+
   async function travelToZone(zoneId) {
+    if (!hub?.authenticated) {
+      toast('AUTHENTICATION REQUIRED: PLEASE LOG IN WITH YOUR TEAM CREDENTIALS.', true);
+      await navigate('registration');
+      return;
+    }
     const zone = zoneById(zoneId); if (!zone) return;
     if (!zone.unlocked) return showDenied(zoneId);
     hideTooltip();
     const path = $(`#route-${zoneId}`);
     const marker = $('#traveller'); const ring = $('#traveller-ring');
     if (!reducedMotion && path && path.getTotalLength) {
-      const length = path.getTotalLength(); const start = performance.now(); const duration = 900;
+      const length = path.getTotalLength(); const start = performance.now(); const duration = 800;
       marker.style.opacity = '1'; ring.style.opacity = '1';
       await new Promise((resolve) => {
         const step = (now) => {
@@ -192,7 +227,14 @@
     } else { const p = { x: zone.position.x * 12, y: zone.position.y * 7.6 }; marker.setAttribute('cx', p.x); marker.setAttribute('cy', p.y); ring.setAttribute('cx', p.x); ring.setAttribute('cy', p.y); }
     $('#map-region-label').textContent = `REGION ${String(zone.order).padStart(2, '0')} / ${zone.name}`;
     $('#map-region-subtitle').textContent = zone.tagline;
-    await showZone(zoneId);
+
+    const targetUrl = ZONE_URLS[zoneId] || zone.url;
+    if (targetUrl) {
+      window.open(targetUrl, '_blank', 'noopener,noreferrer');
+      toast(`DISPATCHED TO ${zone.name} ↗ (ACTIVE IN NEW TAB)`);
+    } else {
+      await showZone(zoneId);
+    }
   }
   async function showZone(zoneId, options = {}) {
     try {
@@ -290,20 +332,86 @@
     if (first) { $('#traveller').setAttribute('cx', '600'); $('#traveller').setAttribute('cy', '383'); $('#traveller-ring').setAttribute('cx', '600'); $('#traveller-ring').setAttribute('cy', '383'); }
   }
   function updateHUD() {
-    if (!hub?.authenticated) return;
+    const topTeamText = $('#topbar-team-text');
+    const topTeamInfo = $('#topbar-team-info');
+    const topDot = $('#topbar-signal-dot');
+    if (!hub?.authenticated) {
+      if (topTeamText) topTeamText.innerHTML = '<a href="#registration" style="color:#fca5a5;text-decoration:none;">NOT AUTHENTICATED · CHECK IN →</a>';
+      if (topTeamInfo) {
+        topTeamInfo.style.background = 'rgba(239, 68, 68, 0.12)';
+        topTeamInfo.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+        topTeamInfo.style.color = '#fca5a5';
+      }
+      if (topDot) {
+        topDot.style.background = '#ef4444';
+        topDot.style.boxShadow = '0 0 6px #ef4444';
+      }
+      $('#hud-team-name').textContent = 'NOT LOGGED IN';
+      $('#hud-team-id').innerHTML = '<a href="#registration" style="color:#fcd34d;text-decoration:underline;cursor:pointer;">ENTER CREDENTIALS →</a>';
+      $('#progress-value').textContent = '0/4';
+      $('#progress-heading').textContent = 'THE RECOVERY';
+      $('#progress-caption').textContent = 'AUTHENTICATION REQUIRED';
+      renderMapNodes();
+      updateCountdown();
+      return;
+    }
+    const playerLabel = hub.player?.delegateId ? ` · OP ${hub.player.delegateId}` : '';
+    const scoreLabel = hub.score?.total !== undefined ? ` · ${hub.score.total} PTS` : ' · 0 PTS';
+    const fullBadge = `${hub.team.id}${playerLabel}${scoreLabel}`;
     $('#hud-team-name').textContent = hub.team.name;
-    $('#hud-team-id').textContent = `ID: ${hub.team.id}`;
+    $('#hud-team-id').textContent = fullBadge;
+    if (topTeamText) topTeamText.textContent = `AUTHENTICATED: ${hub.team.name.toUpperCase()} (${hub.team.id}${playerLabel})`;
+    if (topTeamInfo) {
+      topTeamInfo.style.background = 'rgba(74, 222, 128, 0.12)';
+      topTeamInfo.style.borderColor = 'rgba(74, 222, 128, 0.4)';
+      topTeamInfo.style.color = '#4ade80';
+    }
+    if (topDot) {
+      topDot.style.background = '#4ade80';
+      topDot.style.boxShadow = '0 0 6px #4ade80';
+    }
     $('#progress-value').textContent = `${hub.progress.solved}/${hub.progress.total}`;
     $('#progress-heading').textContent = hub.progress.complete ? 'WORLD RESTORED' : 'THE RECOVERY';
-    $('#progress-caption').textContent = hub.progress.complete ? 'ALL SIGNALS RECOVERED' : `${hub.progress.total - hub.progress.solved} FRAGMENTS REMAIN`;
+    $('#progress-caption').textContent = hub.progress.complete ? 'ALL FRAGMENTS RECOVERED' : `${hub.progress.total - hub.progress.solved} FRAGMENTS REMAIN`;
     $('#progress-bar').style.width = `${Math.round(hub.progress.ratio * 100)}%`;
     $('#ring-progress').style.strokeDashoffset = `${226.2 * (1 - hub.progress.ratio)}`;
     const current = hub.zones.find((zone) => zone.unlocked && zone.state !== 'cleared') || [...hub.zones].reverse().find((zone) => zone.state === 'cleared') || hub.zones[0];
-    $('#hud-objective-title').textContent = hub.progress.complete ? 'THE WORLD REMEMBERS' : current.state === 'in-progress' ? `FINISH ${current.name}` : `ENTER ${current.name}`;
-    $('#hud-objective-copy').textContent = hub.progress.complete ? 'Every surviving record has been recovered.' : current.state === 'in-progress' ? `${current.ctfTotal - current.solved} signals remain in this quarantine.` : current.state === 'cleared' ? 'The next quarantine barrier is ready.' : 'Recover the first surviving data fragments.';
+    $('#hud-objective-title').textContent = hub.progress.complete ? 'RECOVERY COMPLETE' : `ENTER ${current.name}`;
+    $('#hud-objective-copy').textContent = hub.progress.complete ? 'Every surviving record has been recovered.' : current.state === 'cleared' ? 'Quarantine breached. Proceed to next sector.' : 'Recover the surviving data fragment.';
     $('#zones-count').textContent = `${String(hub.zones.filter((zone) => zone.unlocked).length).padStart(2, '0')} / 05`;
-    $('#hud-zone-list').innerHTML = hub.zones.map((zone) => `<button class="hud-zone-row ${zone.state === 'cleared' ? 'cleared' : ''}" data-hud-zone="${escapeHTML(zone.id)}" style="--zone:${escapeHTML(zone.color)}" ${zone.unlocked ? '' : 'disabled'} aria-label="${escapeHTML(zone.name)}, ${escapeHTML(zone.state)}"><span class="zone-chip"></span><b>${escapeHTML(zone.name)}</b><span>${zone.state === 'locked' ? 'LOCKED' : zone.state === 'cleared' ? '✓ CLEAR' : `${zone.solved}/${zone.ctfTotal}`}</span></button>`).join('');
+    $('#hud-zone-list').innerHTML = hub.zones.map((zone) => `<button class="hud-zone-row ${zone.state === 'cleared' ? 'cleared' : ''}" data-hud-zone="${escapeHTML(zone.id)}" style="--zone:${escapeHTML(zone.color)}" ${zone.unlocked ? '' : 'disabled'} aria-label="${escapeHTML(zone.name)}, ${escapeHTML(zone.state)}"><span class="zone-chip"></span><b>${escapeHTML(zone.name)}</b><span>${zone.state === 'locked' ? 'LOCKED' : zone.state === 'cleared' ? '✓ CLEAR' : 'ENTER ↗'}</span></button>`).join('');
     queryAll('.hud-zone-row').forEach((button) => button.addEventListener('click', () => travelToZone(button.dataset.hudZone)));
+
+    // Render earned dataset fragments — train.csv is locked until Purple Zone is unlocked
+    const earned = hub.datasets || [];
+    const isPurpleUnlocked = !!hub.zones?.some((z) => z.id === 'purple' && z.unlocked);
+    const allDatasets = [
+      { key: 'train', label: 'HISTORICAL TRAINING SET (79 COLS)', file: 'train.csv', unlocked: isPurpleUnlocked },
+      { key: 'community_final', label: 'YELLOW REWARD: COMMUNITY (20 COLS)', file: 'community_final.csv', unlocked: earned.includes('community_final') },
+      { key: 'radio_final', label: 'BLUE REWARD: RADIO COMMS (18 COLS)', file: 'radio_final.csv', unlocked: earned.includes('radio_final') },
+      { key: 'forensics_final', label: 'ORANGE REWARD: FORENSICS (18 COLS)', file: 'forensics_final.csv', unlocked: earned.includes('forensics_final') },
+      { key: 'research_final', label: 'RED REWARD: RESEARCH (25 COLS)', file: 'research_final.csv', unlocked: earned.includes('research_final') }
+    ];
+
+    const unlockedCount = allDatasets.filter((d) => d.key !== 'train' && d.unlocked).length;
+    if ($('#datasets-count')) $('#datasets-count').textContent = `${String(unlockedCount).padStart(2, '0')} / 04`;
+
+    if ($('#hud-dataset-list')) {
+      $('#hud-dataset-list').innerHTML = allDatasets.map((d) => {
+        if (d.unlocked) {
+          return `<a href="/api/dataset/${d.key}" download="${d.file}" class="hud-zone-row cleared" style="--zone:#4ade80;text-decoration:none;display:flex;align-items:center;justify-content:space-between;padding:7px 10px;margin-bottom:4px;font-size:11px;background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.25);border-radius:4px;" title="Download verified dataset fragment">
+            <span style="font-weight:600;color:#f0fdf4;">◈ ${escapeHTML(d.file)}</span>
+            <span style="color:#4ade80;font-weight:bold;letter-spacing:0.5px;">DOWNLOAD ⤓</span>
+          </a>`;
+        } else {
+          return `<div class="hud-zone-row" style="opacity:0.4;display:flex;align-items:center;justify-content:space-between;padding:7px 10px;margin-bottom:4px;font-size:11px;border:1px dashed rgba(255,255,255,0.1);border-radius:4px;">
+            <span style="color:#888;">◇ ${escapeHTML(d.file)}</span>
+            <span style="color:#666;font-size:10px;">${d.key === 'train' ? 'LOCKED · PURPLE' : 'LOCKED'}</span>
+          </div>`;
+        }
+      }).join('');
+    }
+
     $('#survivor-log').innerHTML = (hub.events || []).slice(0, 5).map((event) => `<p><time>${fmtTime(event.at)}</time> ${escapeHTML(event.message)}</p>`).join('') || '<p><time>--:--</time> NETWORK INITIALIZED.</p>';
     renderMapNodes(); updateCountdown();
   }
@@ -378,19 +486,25 @@
   async function handleRegistration(event) {
     event.preventDefault();
     const errorBox = $('#registration-error'); errorBox.hidden = true;
-    const teamId = $('#team-id').value.trim(); const teamName = $('#team-name').value.trim();
-    if (!teamId || !teamName) { errorBox.textContent = 'BOTH CREDENTIALS ARE REQUIRED. THE SCANNER CANNOT AUTHORIZE AN EMPTY SIGNAL.'; errorBox.hidden = false; return; }
-    $('#scan-submit').disabled = true; $('#scan-submit .gate-label b').textContent = 'SCANNING CREDENTIALS…';
+    const teamId = $('#team-id').value.trim();
+    const delegateId = $('#delegate-id') ? $('#delegate-id').value.trim() : '';
+    const passcode = $('#team-passcode') ? $('#team-passcode').value.trim() : '';
+    if (!teamId || !delegateId || !passcode) {
+      errorBox.textContent = 'TEAM ID, DELEGATE ID, AND ACCESS PASSCODE ARE ALL REQUIRED.';
+      errorBox.hidden = false;
+      return;
+    }
+    $('#scan-submit').disabled = true; $('#scan-submit .gate-label b').textContent = 'AUTHENTICATING…';
     try {
-      const next = await api('/api/register', { method: 'POST', body: { teamId, teamName } });
+      const next = await api('/api/register', { method: 'POST', body: { teamId, delegateId, passcode } });
       hub = next;
       $('#tag-team-name').textContent = next.team.name;
-      $('#tag-team-id').textContent = `ID: ${next.team.id}`;
+      $('#tag-team-id').textContent = `TEAM: ${next.team.id} | OP: ${next.player?.delegateId || delegateId}`;
       $('#dog-tag').classList.add('visible');
       $('#registration-title').innerHTML = 'IDENTITY<br><em>CONFIRMED.</em>';
       $('#scan-submit .gate-label b').textContent = 'GATE UNLOCKED';
       $('#scan-submit .gate-label small').textContent = 'SURVIVOR TAG PRINTED · WELCOME HOME';
-      $('#map-network-status').textContent = 'LOCAL NETWORK SECURE';
+      $('#map-network-status').textContent = 'MAHE CENTRAL DB SECURE';
       await sleep(800);
       applyBootstrap(next);
       await navigate('map', { saveView: false, instant: false });
@@ -411,20 +525,30 @@
       const dx = event.clientX - drag.x, dy = event.clientY - drag.y;
       if (Math.abs(dx) + Math.abs(dy) > 4) drag.moved = true;
       if (drag.moved) {
-        panX = Math.max(-220, Math.min(220, drag.px + dx));
-        panY = Math.max(-140, Math.min(140, drag.py + dy)); updateMapTransform();
+        panX = Math.max(-550, Math.min(550, drag.px + dx));
+        panY = Math.max(-380, Math.min(380, drag.py + dy)); updateMapTransform();
       }
     });
     mapStage.addEventListener('pointerup', () => { drag = null; });
     mapStage.addEventListener('pointercancel', () => { drag = null; });
     mapStage.addEventListener('wheel', (event) => {
       if (document.body.dataset.screen !== 'map') return;
-      event.preventDefault(); zoom = Math.max(1, Math.min(1.42, zoom + (event.deltaY < 0 ? .05 : -.05))); updateMapTransform();
+      event.preventDefault(); zoom = Math.max(0.65, Math.min(2.2, zoom + (event.deltaY < 0 ? .08 : -.08))); updateMapTransform();
     }, { passive: false });
+    const zoomInBtn = $('#map-zoom-in');
+    const zoomOutBtn = $('#map-zoom-out');
+    const zoomFitBtn = $('#map-zoom-fit');
+    if (zoomInBtn) zoomInBtn.addEventListener('click', (e) => { e.stopPropagation(); zoom = Math.min(2.2, zoom + 0.15); updateMapTransform(); });
+    if (zoomOutBtn) zoomOutBtn.addEventListener('click', (e) => { e.stopPropagation(); zoom = Math.max(0.65, zoom - 0.15); updateMapTransform(); });
+    if (zoomFitBtn) zoomFitBtn.addEventListener('click', (e) => { e.stopPropagation(); zoom = 1.0; panX = 0; panY = 0; updateMapTransform(); toast('MAP VIEW RESET TO FIT ALL SECTORS'); });
     const sanctuary = $('#sanctuary');
-    const openBriefing = () => { $('#map-briefing').hidden = false; };
-    sanctuary.addEventListener('click', openBriefing);
-    sanctuary.addEventListener('keydown', (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openBriefing(); } });
+    const openSanctuary = () => {
+      window.open('https://intro-stroyline-p5wi7qpvf-abcd-dee5.vercel.app/', '_blank', 'noopener,noreferrer');
+      toast('LAUNCHED INTRO STORYLINE & SANCTUARY IN NEW TAB ↗');
+      $('#map-briefing').hidden = false;
+    };
+    sanctuary.addEventListener('click', openSanctuary);
+    sanctuary.addEventListener('keydown', (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openSanctuary(); } });
   }
   function setupEvents() {
     $('#enter-sanctuary').addEventListener('click', async () => {
@@ -441,6 +565,22 @@
     $('#hud-expand').addEventListener('click', () => { $('#survivor-hud').classList.remove('collapsed'); $('#hud-expand').hidden = true; $('#hud-collapse').textContent = '−'; $('#hud-collapse').setAttribute('aria-expanded', 'true'); });
     $('#briefing-close').addEventListener('click', () => { $('#map-briefing').hidden = true; });
     $('#briefing-continue').addEventListener('click', () => { $('#map-briefing').hidden = true; const first = hub?.zones.find((zone) => zone.unlocked && zone.state !== 'cleared'); if (first) travelToZone(first.id); });
+    const markCompleteBtn = $('#briefing-mark-complete');
+    if (markCompleteBtn) {
+      markCompleteBtn.addEventListener('click', async () => {
+        try {
+          const res = await api('/api/sanctuary/complete', { method: 'POST', body: {} });
+          if (res.bootstrap) {
+            applyBootstrap(res.bootstrap);
+            renderMapNodes();
+            toast('SANCTUARY COMPLETED · YELLOW ZONE QUARANTINE BREACHED!');
+          }
+          $('#map-briefing').hidden = true;
+        } catch (err) {
+          toast(err.message || 'Could not register Sanctuary completion.', true);
+        }
+      });
+    }
     $('#logout-button').addEventListener('click', async () => {
       try { await api('/api/logout', { method: 'POST', body: {} }); hub = null; setSound(false); await navigate('hero', { saveView: false, force: true }); toast('SESSION DISCONNECTED. YOUR TEAM PROGRESS IS PRESERVED.'); }
       catch (error) { toast(error.message || 'Could not disconnect.', true); }
@@ -497,9 +637,12 @@
         if (data.view?.screen === 'zone' && data.view.zoneId) await showZone(data.view.zoneId, { saveView: false, instant: true });
         else if (data.view?.screen === 'ctf' && data.view.ctfId) await openCtf(data.view.ctfId, { instant: true });
         else { setScreen('map'); }
+        renderMapNodes();
       } else {
         hub = data;
-        if (location.hash === '#registration') await navigate('registration', { instant: true }); else setScreen('hero');
+        if (location.hash === '#registration') await navigate('registration', { instant: true });
+        else if (location.hash === '#map') { setScreen('map'); updateHUD(); }
+        else setScreen('hero');
         renderMapNodes();
       }
     } catch (error) {

@@ -1,7 +1,7 @@
 {
   "name": "THE LAST DATASET",
   "format": "24-hour online Machine Learning / data-forensics CTF",
-  "start": "2026-11-01T10:00:00+05:30",
-  "end": "2026-11-02T10:00:00+05:30",
-  "scheduleNote": "DEMO SCHEDULE — replace start/end with the official event times before launch"
+  "start": "2026-10-10T00:00:00+05:30",
+  "end": "2026-10-12T23:59:59+05:30",
+  "scheduleNote": "Official Event Schedule - 24H LIVE"
 }
