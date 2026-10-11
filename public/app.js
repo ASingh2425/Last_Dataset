@@ -543,7 +543,7 @@
     if (zoomFitBtn) zoomFitBtn.addEventListener('click', (e) => { e.stopPropagation(); zoom = 1.0; panX = 0; panY = 0; updateMapTransform(); toast('MAP VIEW RESET TO FIT ALL SECTORS'); });
     const sanctuary = $('#sanctuary');
     const openSanctuary = () => {
-      window.open('https://intro-stroyline-p5wi7qpvf-abcd-dee5.vercel.app/', '_blank', 'noopener,noreferrer');
+      window.open('https://intro-stroyline.vercel.app/', '_blank', 'noopener,noreferrer');
       toast('LAUNCHED INTRO STORYLINE & SANCTUARY IN NEW TAB ↗');
       $('#map-briefing').hidden = false;
     };
