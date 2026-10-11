@@ -331,6 +331,20 @@
     const first = states.find((zone) => zone.state === 'available' || zone.state === 'in-progress');
     if (first) { $('#traveller').setAttribute('cx', '600'); $('#traveller').setAttribute('cy', '383'); $('#traveller-ring').setAttribute('cx', '600'); $('#traveller-ring').setAttribute('cy', '383'); }
   }
+  function updateBriefingGateStatus() {
+    const dot = $('#briefing-gate-dot');
+    const text = $('#briefing-gate-text');
+    if (!dot || !text) return;
+    if (hub?.sanctuaryCompleted) {
+      dot.style.background = '#4ade80';
+      dot.style.boxShadow = '0 0 6px #4ade80';
+      text.textContent = 'GATE STATUS: VERIFIED · YELLOW ZONE UNLOCKED';
+    } else {
+      dot.style.background = '#ef4444';
+      dot.style.boxShadow = '0 0 6px #ef4444';
+      text.textContent = 'GATE ACCESS LOCKED · SOLVE SANCTUARY CTF';
+    }
+  }
   function updateHUD() {
     const topTeamText = $('#topbar-team-text');
     const topTeamInfo = $('#topbar-team-info');
@@ -413,7 +427,7 @@
     }
 
     $('#survivor-log').innerHTML = (hub.events || []).slice(0, 5).map((event) => `<p><time>${fmtTime(event.at)}</time> ${escapeHTML(event.message)}</p>`).join('') || '<p><time>--:--</time> NETWORK INITIALIZED.</p>';
-    renderMapNodes(); updateCountdown();
+    renderMapNodes(); updateCountdown(); updateBriefingGateStatus();
   }
   function applyBootstrap(next, options = {}) {
     const previous = hub;
@@ -543,8 +557,10 @@
     if (zoomFitBtn) zoomFitBtn.addEventListener('click', (e) => { e.stopPropagation(); zoom = 1.0; panX = 0; panY = 0; updateMapTransform(); toast('MAP VIEW RESET TO FIT ALL SECTORS'); });
     const sanctuary = $('#sanctuary');
     const openSanctuary = () => {
-      window.open('https://intro-stroyline.vercel.app/', '_blank', 'noopener,noreferrer');
+      const teamParam = hub?.team?.id ? `?team=${encodeURIComponent(hub.team.id)}` : '';
+      window.open(`https://intro-stroyline.vercel.app/${teamParam}`, '_blank', 'noopener,noreferrer');
       toast('LAUNCHED INTRO STORYLINE & SANCTUARY IN NEW TAB ↗');
+      updateBriefingGateStatus();
       $('#map-briefing').hidden = false;
     };
     sanctuary.addEventListener('click', openSanctuary);
@@ -565,22 +581,26 @@
     $('#hud-expand').addEventListener('click', () => { $('#survivor-hud').classList.remove('collapsed'); $('#hud-expand').hidden = true; $('#hud-collapse').textContent = '−'; $('#hud-collapse').setAttribute('aria-expanded', 'true'); });
     $('#briefing-close').addEventListener('click', () => { $('#map-briefing').hidden = true; });
     $('#briefing-continue').addEventListener('click', () => { $('#map-briefing').hidden = true; const first = hub?.zones.find((zone) => zone.unlocked && zone.state !== 'cleared'); if (first) travelToZone(first.id); });
-    const markCompleteBtn = $('#briefing-mark-complete');
-    if (markCompleteBtn) {
-      markCompleteBtn.addEventListener('click', async () => {
-        try {
-          const res = await api('/api/sanctuary/complete', { method: 'POST', body: {} });
-          if (res.bootstrap) {
-            applyBootstrap(res.bootstrap);
-            renderMapNodes();
-            toast('SANCTUARY COMPLETED · YELLOW ZONE QUARANTINE BREACHED!');
-          }
-          $('#map-briefing').hidden = true;
-        } catch (err) {
-          toast(err.message || 'Could not register Sanctuary completion.', true);
-        }
-      });
-    }
+
+    // Auto-sync map with live Sanctuary CTF progression
+    const checkSanctuaryStatus = async () => {
+      if (!hub?.authenticated || hub?.sanctuaryCompleted) return;
+      const next = await refreshBootstrap({ animate: false });
+      if (next?.sanctuaryCompleted) {
+        renderMapNodes();
+        updateBriefingGateStatus();
+        toast('SANCTUARY GATE BREACHED · YELLOW ZONE UNLOCKED!');
+      }
+    };
+    window.addEventListener('focus', checkSanctuaryStatus);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') checkSanctuaryStatus();
+    });
+    setInterval(() => {
+      if (document.body.dataset.screen === 'map' && hub?.authenticated && !hub?.sanctuaryCompleted) {
+        checkSanctuaryStatus();
+      }
+    }, 3500);
     $('#logout-button').addEventListener('click', async () => {
       try { await api('/api/logout', { method: 'POST', body: {} }); hub = null; setSound(false); await navigate('hero', { saveView: false, force: true }); toast('SESSION DISCONNECTED. YOUR TEAM PROGRESS IS PRESERVED.'); }
       catch (error) { toast(error.message || 'Could not disconnect.', true); }
