@@ -200,11 +200,22 @@
 
   function handleFileSelect(file) {
     if (!file) return;
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+      toast('Invalid file format: must be a .csv file', 'error');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast(`File size (${(file.size / (1024 * 1024)).toFixed(2)} MB) exceeds 5MB limit`, 'error');
+      return;
+    }
     selectedFileName = file.name;
     const reader = new FileReader();
     reader.onload = (e) => {
       rawCsvContent = e.target.result;
       runPreflightCheck();
+    };
+    reader.onerror = () => {
+      toast('Failed to read file from local device', 'error');
     };
     reader.readAsText(file);
   }
@@ -262,11 +273,12 @@
         updateGatePill(true);
         showHelicopterActiveBanner(true);
         // Signal the parent Map Hub window so the world map unlocks finale
+        const targetOrigin = window.location.origin;
         if (window.opener) {
-          window.opener.postMessage({ type: 'PURPLE_ESCAPE_QUALIFIED' }, '*');
+          window.opener.postMessage({ type: 'PURPLE_ESCAPE_QUALIFIED' }, targetOrigin);
         }
         if (window.parent && window.parent !== window) {
-          window.parent.postMessage({ type: 'PURPLE_ESCAPE_QUALIFIED' }, '*');
+          window.parent.postMessage({ type: 'PURPLE_ESCAPE_QUALIFIED' }, targetOrigin);
         }
         toast('QUALIFIED FOR ESCAPE! EXTRACTION TRANSPORTER INBOUND!', 'success');
         // Trigger the cinematic helicopter arrival sequence
@@ -599,6 +611,7 @@
         if (e.target.files && e.target.files[0]) {
           handleFileSelect(e.target.files[0]);
         }
+        e.target.value = '';
       });
     }
 
