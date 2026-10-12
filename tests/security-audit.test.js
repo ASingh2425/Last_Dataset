@@ -38,7 +38,9 @@ async function withAuditServer(t) {
     env: {
       NODE_ENV: 'test',
       SESSION_SECRET,
-      DISABLE_SUPABASE: 'true'
+      DISABLE_SUPABASE: 'true',
+      ENABLE_DEV_TOOLS: 'true',
+      ADMIN_KEY: 'test-admin-secret-key-2026'
     }
   });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -254,14 +256,44 @@ test('Security Audit 6: Purple zone completion without qualifying R2 >= 0.80 ML 
   });
   const cookie = regRes.headers.get('set-cookie')?.split(';')[0];
 
-  // Clear Sanctuary -> Yellow -> Blue -> Orange -> Red legitimately
-  for (const zone of ['sanctuary', 'yellow', 'blue', 'orange', 'red']) {
-    const res = await fetch(`${baseUrl}/api/zone/complete`, {
+  // Clear Sanctuary legitimately (no challenges required)
+  const sancRes = await fetch(`${baseUrl}/api/zone/complete`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Cookie: cookie },
+    body: JSON.stringify({ zoneId: 'sanctuary' })
+  });
+  assert.equal(sancRes.status, 200, 'Clearing Sanctuary must succeed');
+
+  // Verify that attempting to clear Yellow without yellow-01 returns 403 CHALLENGES_INCOMPLETE
+  const yellowIncompleteRes = await fetch(`${baseUrl}/api/zone/complete`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Cookie: cookie },
+    body: JSON.stringify({ zoneId: 'yellow' })
+  });
+  assert.equal(yellowIncompleteRes.status, 403, 'Yellow zone clear without solving yellow-01 must return 403');
+  const yellowIncompleteJson = await yellowIncompleteRes.json();
+  assert.equal(yellowIncompleteJson.error, 'CHALLENGES_INCOMPLETE');
+
+  // Solve each zone's required challenge and clear the sector legitimately
+  for (const [zone, ctfId] of [
+    ['yellow', 'yellow-01'],
+    ['blue', 'blue-01'],
+    ['orange', 'orange-01'],
+    ['red', 'red-01']
+  ]) {
+    const solveRes = await fetch(`${baseUrl}/api/dev/solve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Cookie: cookie },
+      body: JSON.stringify({ ctfId })
+    });
+    assert.equal(solveRes.status, 200, `Solving ${ctfId} must succeed`);
+
+    const clearRes = await fetch(`${baseUrl}/api/zone/complete`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Cookie: cookie },
       body: JSON.stringify({ zoneId: zone })
     });
-    assert.equal(res.status, 200, `Clearing prerequisite zone ${zone} must succeed`);
+    assert.equal(clearRes.status, 200, `Clearing sector ${zone} must succeed`);
   }
 
   // Now Red is complete. Attempt to clear Purple directly without an approved ML submission
@@ -309,4 +341,139 @@ test('Security Audit 6: Purple zone completion without qualifying R2 >= 0.80 ML 
   });
   const bootJson = await bootRes.json();
   assert.ok(bootJson.ml.escapeUnlocked, 'Escape Gate must be unlocked');
+});
+
+test('Security Audit 7: Permanent ML submission lock: once qualified for escape, future submissions return 429 PURPLE_ALREADY_COMPLETED', async (t) => {
+  const { baseUrl } = await withAuditServer(t);
+
+  const regRes = await fetch(`${baseUrl}/api/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ teamId: 'LOCKED-TEAM', teamName: 'Locked Out' })
+  });
+  const cookie = regRes.headers.get('set-cookie')?.split(';')[0];
+
+  // Submit qualifying winning ML submission
+  const winningCsv = getPerfectCsv();
+  const winRes = await fetch(`${baseUrl}/api/ml/evaluate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Cookie: cookie },
+    body: JSON.stringify({ csvContent: winningCsv })
+  });
+  assert.equal(winRes.status, 200);
+
+  // Subsequent submission attempt must be rejected with 429 PURPLE_ALREADY_COMPLETED
+  const secondRes = await fetch(`${baseUrl}/api/ml/evaluate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Cookie: cookie },
+    body: JSON.stringify({ csvContent: winningCsv })
+  });
+  assert.equal(secondRes.status, 429, 'Further submissions after escape must return 429');
+  const secondJson = await secondRes.json();
+  assert.equal(secondJson.error, 'PURPLE_ALREADY_COMPLETED');
+});
+
+test('Security Audit 8: Hard 2-player team cap prevents 3rd member registration with 400 TEAM_CAP_EXCEEDED', async (t) => {
+  const { baseUrl } = await withAuditServer(t);
+
+  // Player 1 registers
+  const p1Res = await fetch(`${baseUrl}/api/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ teamId: 'ROSTER-TEAM', delegateId: 'PLAYER-1', teamName: 'Duo Squad' })
+  });
+  assert.equal(p1Res.status, 200);
+
+  // Player 2 registers
+  const p2Res = await fetch(`${baseUrl}/api/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ teamId: 'ROSTER-TEAM', delegateId: 'PLAYER-2' })
+  });
+  assert.equal(p2Res.status, 200);
+
+  // Player 3 attempts to register to the same team
+  const p3Res = await fetch(`${baseUrl}/api/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ teamId: 'ROSTER-TEAM', delegateId: 'PLAYER-3' })
+  });
+  assert.equal(p3Res.status, 400, '3rd member must be rejected with 400');
+  const p3Json = await p3Res.json();
+  assert.equal(p3Json.error, 'TEAM_CAP_EXCEEDED');
+});
+
+test('Security Audit 9: Canonical 3,100 points audit: total score matches exactly 3,100 points after full game clear', async (t) => {
+  const { baseUrl } = await withAuditServer(t);
+
+  const regRes = await fetch(`${baseUrl}/api/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ teamId: 'PERFECT-TEAM', teamName: 'Grand Champions' })
+  });
+  const cookie = regRes.headers.get('set-cookie')?.split(';')[0];
+
+  // 1. Clear Sanctuary -> 100 pts
+  await fetch(`${baseUrl}/api/zone/complete`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Cookie: cookie },
+    body: JSON.stringify({ zoneId: 'sanctuary' })
+  });
+
+  // 2. Solve & Clear Yellow (200), Blue (400), Orange (600), Red (800)
+  for (const [zone, ctf] of [
+    ['yellow', 'yellow-01'],
+    ['blue', 'blue-01'],
+    ['orange', 'orange-01'],
+    ['red', 'red-01']
+  ]) {
+    await fetch(`${baseUrl}/api/dev/solve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Cookie: cookie },
+      body: JSON.stringify({ ctfId: ctf })
+    });
+    await fetch(`${baseUrl}/api/zone/complete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Cookie: cookie },
+      body: JSON.stringify({ zoneId: zone })
+    });
+  }
+
+  // 3. Clear Purple -> 1,000 pts
+  await fetch(`${baseUrl}/api/ml/evaluate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Cookie: cookie },
+    body: JSON.stringify({ csvContent: getPerfectCsv() })
+  });
+
+  // Check authoritative score
+  const bootRes = await fetch(`${baseUrl}/api/bootstrap`, {
+    headers: { Cookie: cookie }
+  });
+  const bootJson = await bootRes.json();
+  assert.equal(bootJson.score.total, 3100, 'Total score must equal exactly 3,100 points (100+200+400+600+800+1000)');
+});
+
+test('Security Audit 10: Admin overview route requires x-admin-key authentication and returns full team matrix', async (t) => {
+  const { baseUrl } = await withAuditServer(t);
+
+  // 1. Without admin key -> 401
+  const unauthRes = await fetch(`${baseUrl}/api/admin/overview`);
+  assert.equal(unauthRes.status, 401, 'Admin overview without key must return 401');
+
+  // 2. With wrong key -> 401
+  const wrongKeyRes = await fetch(`${baseUrl}/api/admin/overview`, {
+    headers: { 'x-admin-key': 'incorrect-key' }
+  });
+  assert.equal(wrongKeyRes.status, 401, 'Admin overview with wrong key must return 401');
+
+  // 3. With valid key -> 200
+  const adminRes = await fetch(`${baseUrl}/api/admin/overview`, {
+    headers: { 'x-admin-key': 'test-admin-secret-key-2026' }
+  });
+  assert.equal(adminRes.status, 200, 'Admin overview with valid key must return 200');
+  const adminJson = await adminRes.json();
+  assert.equal(adminJson.ok, true);
+  assert.equal(adminJson.totalPointsPossible, 3100);
+  assert.ok(Array.isArray(adminJson.teams));
 });

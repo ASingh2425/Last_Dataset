@@ -1,4 +1,4 @@
-﻿-- =========================================================================
+-- =========================================================================
 -- THE LAST DATASET — MIGRATION 002: ATOMIC ML QUOTA RESERVATION
 -- TechTatva 2026 | MAHE Manipal
 -- Multi-instance advisory lock and atomic quota reservation
@@ -34,6 +34,32 @@ BEGIN
     FROM public.ml_submissions
     WHERE team_id = v_clean_team_id;
 
+    -- 2. Check if team has already qualified or completed purple zone
+    DECLARE
+        v_already_escaped BOOLEAN := FALSE;
+    BEGIN
+        SELECT EXISTS (
+            SELECT 1 FROM public.ml_submissions
+            WHERE team_id = v_clean_team_id AND qualifies_for_escape = TRUE
+        ) OR EXISTS (
+            SELECT 1 FROM public.zone_progress
+            WHERE team_id = v_clean_team_id AND zone_id = 'purple' AND status = 'completed'
+        ) INTO v_already_escaped;
+
+        IF v_already_escaped THEN
+            RETURN jsonb_build_object(
+                'allowed', FALSE,
+                'submissionId', NULL,
+                'attemptNumber', v_count,
+                'submissionsUsed', v_count,
+                'submissionsRemaining', 0,
+                'alreadyCompleted', TRUE,
+                'reason', 'PURPLE_ALREADY_COMPLETED',
+                'submittedAt', v_now
+            );
+        END IF;
+    END;
+
     -- 3. Check if quota exceeded
     IF v_count >= p_max_attempts THEN
         RETURN jsonb_build_object(
@@ -42,6 +68,8 @@ BEGIN
             'attemptNumber', v_count,
             'submissionsUsed', v_count,
             'submissionsRemaining', 0,
+            'alreadyCompleted', FALSE,
+            'reason', 'SUBMISSION_LIMIT_EXCEEDED',
             'submittedAt', v_now
         );
     END IF;
