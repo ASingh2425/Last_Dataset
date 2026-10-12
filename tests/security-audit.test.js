@@ -477,3 +477,98 @@ test('Security Audit 10: Admin overview route requires x-admin-key authenticatio
   assert.equal(adminJson.totalPointsPossible, 3100);
   assert.ok(Array.isArray(adminJson.teams));
 });
+
+test('Security Audit 11: End-to-end qualifying ML submission -> permanent lock -> purple completion -> idempotent 1,000 pt award', async (t) => {
+  const { baseUrl } = await withAuditServer(t);
+
+  const regRes = await fetch(`${baseUrl}/api/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ teamId: 'E2E-CHAMPS', teamName: 'End To End Champions' })
+  });
+  const cookie = regRes.headers.get('set-cookie')?.split(';')[0];
+
+  // 1. Clear Sanctuary (100)
+  await fetch(`${baseUrl}/api/zone/complete`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Cookie: cookie },
+    body: JSON.stringify({ zoneId: 'sanctuary' })
+  });
+
+  // 2. Solve & Clear Yellow (200), Blue (400), Orange (600), Red (800)
+  for (const [zone, ctf] of [
+    ['yellow', 'yellow-01'],
+    ['blue', 'blue-01'],
+    ['orange', 'orange-01'],
+    ['red', 'red-01']
+  ]) {
+    await fetch(`${baseUrl}/api/dev/solve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Cookie: cookie },
+      body: JSON.stringify({ ctfId: ctf })
+    });
+    await fetch(`${baseUrl}/api/zone/complete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Cookie: cookie },
+      body: JSON.stringify({ zoneId: zone })
+    });
+  }
+
+  // Pre-Purple state check: score must be exactly 2,100 pts
+  let bootRes = await fetch(`${baseUrl}/api/bootstrap`, { headers: { Cookie: cookie } });
+  let bootJson = await bootRes.json();
+  assert.equal(bootJson.score.total, 2100, 'Score before purple must be exactly 2,100 pts');
+  assert.equal(bootJson.ml.escapeUnlocked, false, 'Escape gate must not be unlocked before qualifying ML');
+  const purpleZoneBefore = bootJson.zones.find((z) => z.id === 'purple');
+  assert.notEqual(purpleZoneBefore?.state, 'cleared', 'Purple must not be cleared before qualifying ML');
+
+  // 3. Submit winning ML model (R2 >= 0.80)
+  const evalRes = await fetch(`${baseUrl}/api/ml/evaluate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Cookie: cookie },
+    body: JSON.stringify({ csvContent: getPerfectCsv() })
+  });
+  assert.equal(evalRes.status, 200);
+  const evalJson = await evalRes.json();
+  assert.ok(evalJson.qualifiesForEscape, 'Winning model must qualify for escape');
+  const evalId = evalJson.evaluationId;
+
+  // 4. Server authoritative state: purple complete, escape unlocked, exactly 3,100 pts
+  bootRes = await fetch(`${baseUrl}/api/bootstrap`, { headers: { Cookie: cookie } });
+  bootJson = await bootRes.json();
+  assert.equal(bootJson.score.total, 3100, 'Total score must equal exactly 3,100 pts (2100 + 1000)');
+  assert.equal(bootJson.ml.escapeUnlocked, true, 'Escape gate must be authoritatively unlocked');
+  const purpleZoneAfter = bootJson.zones.find((z) => z.id === 'purple');
+  assert.equal(purpleZoneAfter?.state, 'cleared', 'Purple zone must be authoritatively marked cleared');
+
+  // 5. Permanent submission lock: subsequent attempt MUST return 429 PURPLE_ALREADY_COMPLETED
+  const secondEvalRes = await fetch(`${baseUrl}/api/ml/evaluate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Cookie: cookie },
+    body: JSON.stringify({ csvContent: getSampleCsv() })
+  });
+  assert.equal(secondEvalRes.status, 429, 'Submissions after qualification must be permanently locked');
+  const secondEvalJson = await secondEvalRes.json();
+  assert.equal(secondEvalJson.error, 'PURPLE_ALREADY_COMPLETED');
+
+  // 6. Idempotency test: manual duplicate call to /api/zone/complete for purple cannot double-award
+  await fetch(`${baseUrl}/api/zone/complete`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Cookie: cookie },
+    body: JSON.stringify({ zoneId: 'purple' })
+  });
+  bootRes = await fetch(`${baseUrl}/api/bootstrap`, { headers: { Cookie: cookie } });
+  bootJson = await bootRes.json();
+  assert.equal(bootJson.score.total, 3100, 'Duplicate zone complete must not increase score beyond 3,100');
+
+  // 7. Idempotency test: reconcile call cannot double-award points
+  const reconcileRes = await fetch(`${baseUrl}/api/ml/reconcile`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Cookie: cookie },
+    body: JSON.stringify({ evaluationId: evalId })
+  });
+  assert.equal(reconcileRes.status, 200);
+  bootRes = await fetch(`${baseUrl}/api/bootstrap`, { headers: { Cookie: cookie } });
+  bootJson = await bootRes.json();
+  assert.equal(bootJson.score.total, 3100, 'Reconcile must preserve canonical 3,100 total score');
+});
