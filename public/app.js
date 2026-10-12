@@ -639,10 +639,14 @@
         toast('SECTOR PROGRESS SYNCHRONIZED · VAULT UPDATED');
       }
       if (event.data?.type === 'PURPLE_ESCAPE_QUALIFIED') {
-        refreshBootstrap({ animate: true }).then(() => {
-          playFinale();
+        refreshBootstrap({ animate: true }).then((bootstrap) => {
+          if (bootstrap?.ml?.escapeUnlocked || bootstrap?.zones?.find((z) => z.id === 'purple')?.state === 'cleared') {
+            playFinale();
+            toast('PRALAYA CORE ESCAPE GATE BREACHED! SURVIVOR COMPLETE!');
+          } else {
+            toast('AWAITING AUTHORITATIVE DATABASE CONFIRMATION FOR EXTRACTION...', true);
+          }
         });
-        toast('PRALAYA CORE ESCAPE GATE BREACHED! SURVIVOR COMPLETE!');
       }
     });
     $('#logout-button').addEventListener('click', async () => {
