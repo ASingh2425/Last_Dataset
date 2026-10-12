@@ -577,3 +577,29 @@ test('Security Audit 11: End-to-end qualifying ML submission -> permanent lock -
   bootJson = await bootRes.json();
   assert.equal(bootJson.score.total, 3100, 'Reconcile must preserve canonical 3,100 total score');
 });
+
+test('Security Audit 12: Production evaluator strictly fails closed without fixture fallback when ground truth is absent', async (t) => {
+  const { evaluateSubmission, _resetGroundTruth } = require('../lib/evaluator');
+  const prevEnv = process.env.NODE_ENV;
+  const prevBase64 = process.env.PRIVATE_ANSWERS_BASE64;
+  const prevPath = process.env.PRIVATE_ANSWERS_PATH;
+
+  try {
+    process.env.NODE_ENV = 'production';
+    delete process.env.PRIVATE_ANSWERS_BASE64;
+    process.env.PRIVATE_ANSWERS_PATH = '/path/to/missing/private_answers.csv';
+    _resetGroundTruth();
+
+    const result = evaluateSubmission('Sanctuary_ID,Survival_Probability\nSANC-0091,0.5');
+    assert.equal(result.valid, false);
+    assert.ok(result.error.includes('SCORING_ARBITER_UNAVAILABLE'), 'Must return SCORING_ARBITER_UNAVAILABLE in production without fixture fallback');
+  } finally {
+    process.env.NODE_ENV = prevEnv;
+    if (prevBase64) process.env.PRIVATE_ANSWERS_BASE64 = prevBase64;
+    else delete process.env.PRIVATE_ANSWERS_BASE64;
+    if (prevPath) process.env.PRIVATE_ANSWERS_PATH = prevPath;
+    else delete process.env.PRIVATE_ANSWERS_PATH;
+    _resetGroundTruth();
+  }
+});
+

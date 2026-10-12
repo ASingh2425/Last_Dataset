@@ -193,10 +193,10 @@ async function main() {
       if (!memErr) importedMembers++;
     }
 
-    // Initialize sanctuary and yellow zone progress
+    // Initialize sanctuary as available and yellow as locked for fair progression
     await supabase.from('zone_progress').upsert([
-      { team_id: team.teamId, zone_id: 'sanctuary', status: 'completed', unlocked_at: new Date().toISOString() },
-      { team_id: team.teamId, zone_id: 'yellow', status: 'available', unlocked_at: new Date().toISOString() }
+      { team_id: team.teamId, zone_id: 'sanctuary', status: 'available', unlocked_at: new Date().toISOString() },
+      { team_id: team.teamId, zone_id: 'yellow', status: 'locked', unlocked_at: null }
     ], { onConflict: 'team_id,zone_id' });
   }
 
