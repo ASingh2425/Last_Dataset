@@ -267,22 +267,29 @@ async function runTests() {
     // 14. Testing Reload State Persistence, Cross-Origin Headers & Progression Endpoints
     console.log('\n--- 14. Testing Reload Persistence & Cross-Origin Progression ---');
 
-    // 14.1 Reload rehydration via ?team= parameter (without session cookie)
+    // 14.1 Unauthenticated request with ?team= cannot access private session
     const reloadUrlRes = await fetch(`${baseUrl}/api/bootstrap?team=TECHTEAM10328`);
-    assert(reloadUrlRes.status === 200, 'GET /api/bootstrap?team=TECHTEAM10328 returns 200 without cookie');
+    assert(reloadUrlRes.status === 200, 'GET /api/bootstrap?team=TECHTEAM10328 returns 200');
     const reloadUrlJson = await reloadUrlRes.json();
-    assert(reloadUrlJson.authenticated === true, 'URL parameter ?team= successfully restores authenticated status on reload');
-    assert((reloadUrlJson.teamId || reloadUrlJson.team?.id) === 'TECHTEAM10328', 'URL parameter ?team= restores correct team ID');
+    assert(reloadUrlJson.authenticated === false, 'URL parameter ?team= without session returns authenticated=false');
     assert(Array.isArray(reloadUrlJson.zones) && reloadUrlJson.zones.length === 5, 'Bootstrap returns all 5 quarantine zones');
 
-    // 14.2 Reload rehydration via x-team-id header (without session cookie)
+    // 14.2 Spoofed x-team-id header without session does not authenticate
     const reloadHeaderRes = await fetch(`${baseUrl}/api/bootstrap`, {
       headers: { 'x-team-id': 'TECHTEAM10328' }
     });
     assert(reloadHeaderRes.status === 200, 'GET /api/bootstrap with x-team-id header returns 200');
     const reloadHeaderJson = await reloadHeaderRes.json();
-    assert(reloadHeaderJson.authenticated === true, 'Header x-team-id restores authenticated status on reload');
-    assert((reloadHeaderJson.teamId || reloadHeaderJson.team?.id) === 'TECHTEAM10328', 'Header x-team-id returns correct team ID');
+    assert(reloadHeaderJson.authenticated === false, 'Header x-team-id without session returns authenticated=false');
+
+    // 14.2b Session cookie rehydration restores authenticated state
+    const authRehydrateRes = await fetch(`${baseUrl}/api/bootstrap`, {
+      headers: { Cookie: sessionCookie }
+    });
+    assert(authRehydrateRes.status === 200, 'GET /api/bootstrap with session cookie returns 200');
+    const authRehydrateJson = await authRehydrateRes.json();
+    assert(authRehydrateJson.authenticated === true, 'Session cookie restores authenticated status');
+    assert((authRehydrateJson.teamId || authRehydrateJson.team?.id) === 'TECHTEAM10328', 'Session cookie returns correct team ID');
 
     // 14.3 Cross-Origin Preflight (OPTIONS)
     const optionsRes = await fetch(`${baseUrl}/api/zone/complete`, {
@@ -290,30 +297,33 @@ async function runTests() {
       headers: {
         'Origin': 'https://yellowzone-xi.vercel.app',
         'Access-Control-Request-Method': 'POST',
-        'Access-Control-Request-Headers': 'content-type, x-team-id'
+        'Access-Control-Request-Headers': 'content-type, authorization, x-session-id'
       }
     });
     assert(optionsRes.status === 204, 'OPTIONS preflight returns 204 No Content');
     assert(optionsRes.headers.get('access-control-allow-origin') === 'https://yellowzone-xi.vercel.app', 'Preflight returns Access-Control-Allow-Origin matching caller origin');
-    assert(optionsRes.headers.get('access-control-allow-headers')?.includes('x-team-id'), 'Preflight permits x-team-id header');
 
-    // 14.4 Cross-Origin Progress Query
-    const progressRes = await fetch(`${baseUrl}/api/team/progress?team=TECHTEAM10328`, {
-      headers: { 'Origin': 'https://bluezone-three.vercel.app' }
+    // 14.4 Cross-Origin Progress Query with Session Cookie
+    const progressRes = await fetch(`${baseUrl}/api/team/progress`, {
+      headers: {
+        'Origin': 'https://bluezone-three.vercel.app',
+        Cookie: sessionCookie
+      }
     });
-    assert(progressRes.status === 200, 'GET /api/team/progress returns 200 OK');
+    assert(progressRes.status === 200, 'GET /api/team/progress returns 200 OK with session');
     const progressJson = await progressRes.json();
     assert((progressJson.teamId || progressJson.team?.id) === 'TECHTEAM10328', 'Progress query returns correct team ID');
     assert(progressJson.zones?.some(z => z.id === 'yellow'), 'Progress contains yellow zone');
 
-    // 14.5 Cross-Zone Direct Progression: Complete Blue & Orange Zones
+    // 14.5 Cross-Zone Direct Progression: Complete Blue & Orange Zones in sequence
     const blueCompleteRes = await fetch(`${baseUrl}/api/zone/complete`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Origin': 'https://bluezone-three.vercel.app'
+        'Origin': 'https://bluezone-three.vercel.app',
+        Cookie: sessionCookie
       },
-      body: JSON.stringify({ teamId: 'TECHTEAM10328', zoneId: 'blue' })
+      body: JSON.stringify({ zoneId: 'blue' })
     });
     assert(blueCompleteRes.status === 200, 'POST /api/zone/complete for Blue Zone returns 200 OK');
     const blueCompleteJson = await blueCompleteRes.json();
@@ -321,14 +331,26 @@ async function runTests() {
     const orangeZoneState = blueCompleteJson.bootstrap?.zones?.find(z => z.id === 'orange');
     assert(orangeZoneState?.unlocked === true, 'Orange Zone unlocked following Blue Zone completion');
 
+    // Complete Orange Zone before Red
+    const orangeCompleteRes = await fetch(`${baseUrl}/api/zone/complete`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Origin': 'https://or-light-gamma.vercel.app',
+        Cookie: sessionCookie
+      },
+      body: JSON.stringify({ zoneId: 'orange' })
+    });
+    assert(orangeCompleteRes.status === 200, 'POST /api/zone/complete for Orange Zone returns 200 OK');
+
     // 14.6 Red Zone completion via /api/red/complete
     const redCompleteRes = await fetch(`${baseUrl}/api/red/complete`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Origin': 'https://red-five-liart.vercel.app'
-      },
-      body: JSON.stringify({ teamId: 'TECHTEAM10328' })
+        'Origin': 'https://red-five-liart.vercel.app',
+        Cookie: sessionCookie
+      }
     });
     assert(redCompleteRes.status === 200, 'POST /api/red/complete returns 200 OK');
     const redCompleteJson = await redCompleteRes.json();

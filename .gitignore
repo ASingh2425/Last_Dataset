@@ -11,3 +11,5 @@ test-results/
 coverage/
 .DS_Store
 repos/
+server_data/private_answers.csv
+server_data/*private*
