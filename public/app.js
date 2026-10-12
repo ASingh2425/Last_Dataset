@@ -176,11 +176,17 @@
     $('#map-region-label').textContent = zone ? `REGION ${String(zone.order).padStart(2, '0')} / ZONE ACCESS LOCKED` : 'ZONE ACCESS LOCKED';
     const sub = $('#map-denied-sub');
     if (sub) {
-      sub.textContent = !hub?.sanctuaryCompleted
-        ? 'COMPLETE THE SANCTUARY STORYLINE BRIEFING TO ACCESS QUARANTINE ZONES'
-        : 'CLEAR THE PREVIOUS ZONE TO ACCESS THIS SECTOR';
+      if (zoneId === 'yellow' && !hub?.sanctuaryCompleted) {
+        sub.textContent = 'COMPLETE THE SANCTUARY STORYLINE & SOLVE GATE CTF TO ACCESS YELLOW ZONE';
+      } else if (zoneId === 'blue') {
+        sub.textContent = 'CLEAR ALL 5 YELLOW ZONE CTFS & RETRIEVE COMMUNITY FRAGMENT TO ACCESS BLUE ZONE';
+      } else {
+        sub.textContent = !hub?.sanctuaryCompleted
+          ? 'COMPLETE THE SANCTUARY STORYLINE BRIEFING TO ACCESS QUARANTINE ZONES'
+          : 'CLEAR THE PREVIOUS ZONE TO ACCESS THIS SECTOR';
+      }
     }
-    toast('ZONE ACCESS LOCKED: Complete the Sanctuary storyline briefing first.', true);
+    toast(zoneId === 'yellow' && !hub?.sanctuaryCompleted ? 'ZONE ACCESS LOCKED: Complete Sanctuary and solve gate CTF first.' : 'ZONE ACCESS LOCKED: Clear previous zone first.', true);
     if (window.TLDScene) window.TLDScene.lurch();
     clearTimeout(deniedTimer);
     deniedTimer = setTimeout(() => {
@@ -377,7 +383,7 @@
     const fullBadge = `${hub.team.id}${playerLabel}${scoreLabel}`;
     $('#hud-team-name').textContent = hub.team.name;
     $('#hud-team-id').textContent = fullBadge;
-    if (topTeamText) topTeamText.textContent = `AUTHENTICATED: ${hub.team.name.toUpperCase()} (${hub.team.id}${playerLabel})`;
+    if (topTeamText) topTeamText.textContent = `AUTHENTICATED: ${hub.team.name.toUpperCase()} (${hub.team.id}${playerLabel} · ${hub.score?.total || 0} PTS)`;
     if (topTeamInfo) {
       topTeamInfo.style.background = 'rgba(74, 222, 128, 0.12)';
       topTeamInfo.style.borderColor = 'rgba(74, 222, 128, 0.4)';
@@ -650,6 +656,11 @@
     setupEvents(); setupMapGestures();
     setTimeout(() => $('#boot-mask').classList.add('boot-hide'), reducedMotion ? 40 : 900);
     setInterval(updateCountdown, 1000);
+    setInterval(async () => {
+      if (hub?.authenticated && !transitionBusy) {
+        await refreshBootstrap({ animate: false });
+      }
+    }, 3000);
     setInterval(() => {
       const title = $('#hero-title'); if (!title || document.body.dataset.screen !== 'hero' || document.body.dataset.clarity === 'true') return;
       title.classList.add('glitch'); setTimeout(() => title.classList.remove('glitch'), 600);

@@ -9,7 +9,7 @@
   "functions": {
     "api/[...path].js": {
       "maxDuration": 30,
-      "includeFiles": "{public/**,config/**}"
+      "includeFiles": "{public/**,config/**,server_data/**,data/**}"
     }
   }
 }
