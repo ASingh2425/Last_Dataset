@@ -1,13 +1,29 @@
+const fs = require('node:fs');
 const path = require('node:path');
 const { createHubServer } = require('../lib/hub');
 
-// Keep one handler per warm function instance. Vercel rewrites all app paths here,
-// then this adapter restores the original URL so the same tested router serves it.
+function getBaseDir() {
+  const candidates = [
+    process.cwd(),
+    path.resolve(__dirname, '..'),
+    __dirname,
+    process.env.LAMBDA_TASK_ROOT
+  ].filter(Boolean);
+
+  for (const dir of candidates) {
+    if (fs.existsSync(path.join(dir, 'config', 'zones.json'))) {
+      return dir;
+    }
+  }
+  return process.cwd();
+}
+
 let hubServer;
 function getHubServer() {
   if (!hubServer) {
     try {
-      hubServer = createHubServer({ baseDir: path.resolve(__dirname, '..') });
+      const baseDir = getBaseDir();
+      hubServer = createHubServer({ baseDir });
     } catch (err) {
       console.error('[getHubServer fatal initialization error]', err);
       throw err;
@@ -16,14 +32,14 @@ function getHubServer() {
   return hubServer;
 }
 
-module.exports = function vercelHandler(req, res) {
+module.exports = async function vercelHandler(req, res) {
   try {
     const requestUrl = new URL(req.url || '/', `https://${req.headers.host || 'localhost'}`);
     const pathname = requestUrl.pathname;
     if (pathname === '/api/hub') requestUrl.pathname = '/';
     else if (pathname.startsWith('/api/hub/')) requestUrl.pathname = pathname.slice('/api/hub'.length) || '/';
     req.url = requestUrl.pathname + requestUrl.search;
-    return getHubServer().emit('request', req, res);
+    return await getHubServer().handler(req, res);
   } catch (error) {
     console.error('[vercelHandler error]', error);
     if (!res.headersSent) {
