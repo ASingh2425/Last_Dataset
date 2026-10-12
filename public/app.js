@@ -22,14 +22,25 @@
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   function storageGet(key) { try { return window.localStorage.getItem(key); } catch { return null; } }
   function storageSet(key, value) { try { window.localStorage.setItem(key, value); } catch { /* private/opaque browser contexts may disable storage */ } }
+  function storageRemove(key) { try { window.localStorage.removeItem(key); } catch { /* private/opaque browser contexts may disable storage */ } }
   const escapeHTML = (value) => String(value).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
   const fmtTime = (value) => { try { return new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }); } catch { return '--:--'; } };
   async function api(url, options = {}) {
+    const headers = options.body === undefined
+      ? { 'Accept': 'application/json' }
+      : { 'Accept': 'application/json', 'Content-Type': 'application/json' };
+    const sid = options.sessionId || storageGet('tld_session_id');
+    const tid = options.teamId || storageGet('tld_team_id');
+    const did = options.delegateId || storageGet('tld_delegate_id');
+    if (sid) headers['x-session-id'] = sid;
+    if (tid) headers['x-team-id'] = tid;
+    if (did) headers['x-delegate-id'] = did;
+
     const response = await fetch(url, {
       method: options.method || 'GET',
       credentials: 'same-origin',
       cache: 'no-store',
-      headers: options.body === undefined ? { 'Accept': 'application/json' } : { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+      headers,
       body: options.body === undefined ? undefined : JSON.stringify(options.body)
     });
     let body = {};
@@ -197,9 +208,9 @@
   const ZONE_URLS = {
     yellow: 'https://yellowzone-xi.vercel.app',
     blue: 'https://bluezone-xi.vercel.app/',
-    orange: 'https://orange-zone-final.vercel.app/',
+    orange: 'https://or-light-gamma.vercel.app/',
     red: 'https://red-five-liart.vercel.app/',
-    purple: 'https://purplezone-frontend.vercel.app/'
+    purple: '/purple'
   };
 
   const STORY_TRANSITIONS = {
@@ -343,6 +354,14 @@
   function updateBriefingGateStatus() {
     const dot = $('#briefing-gate-dot');
     const text = $('#briefing-gate-text');
+    const storylineBtn = $('#briefing-storyline-btn');
+    const gateBtn = $('#briefing-gate-btn');
+    const currentTeam = hub?.team?.id || storageGet('tld_team_id');
+    const teamParam = currentTeam ? `?team=${encodeURIComponent(currentTeam)}` : '';
+
+    if (storylineBtn) storylineBtn.href = `https://intro-stroyline.vercel.app/${teamParam}`;
+    if (gateBtn) gateBtn.href = `https://last-dataset-sanc.vercel.app/${teamParam}`;
+
     if (!dot || !text) return;
     if (hub?.sanctuaryCompleted) {
       dot.style.background = '#4ade80';
@@ -475,8 +494,13 @@
   function playFinale() { $('#finale-cinematic').hidden = false; if (window.TLDScene) window.TLDScene.lurch(); }
   async function refreshBootstrap(options = {}) {
     try {
-      const next = await api('/api/bootstrap');
+      const activeTeam = hub?.team?.id || storageGet('tld_team_id');
+      const fetchUrl = activeTeam ? `/api/bootstrap?team=${encodeURIComponent(activeTeam)}` : '/api/bootstrap';
+      const next = await api(fetchUrl);
       if (!next.authenticated) { hub = next; setScreen('hero'); return next; }
+      if (next.sessionId) storageSet('tld_session_id', next.sessionId);
+      if (next.team?.id) storageSet('tld_team_id', next.team.id);
+      if (next.player?.delegateId) storageSet('tld_delegate_id', next.player.delegateId);
       applyBootstrap(next, { animate: options.animate !== false });
       return next;
     } catch { return null; }
@@ -521,6 +545,9 @@
     try {
       const next = await api('/api/register', { method: 'POST', body: { teamId, delegateId, passcode } });
       hub = next;
+      if (next.sessionId) storageSet('tld_session_id', next.sessionId);
+      if (next.team?.id) storageSet('tld_team_id', next.team.id);
+      if (next.player?.delegateId || delegateId) storageSet('tld_delegate_id', next.player?.delegateId || delegateId);
       $('#tag-team-name').textContent = next.team.name;
       $('#tag-team-id').textContent = `TEAM: ${next.team.id} | OP: ${next.player?.delegateId || delegateId}`;
       $('#dog-tag').classList.add('visible');
@@ -566,7 +593,8 @@
     if (zoomFitBtn) zoomFitBtn.addEventListener('click', (e) => { e.stopPropagation(); zoom = 1.0; panX = 0; panY = 0; updateMapTransform(); toast('MAP VIEW RESET TO FIT ALL SECTORS'); });
     const sanctuary = $('#sanctuary');
     const openSanctuary = () => {
-      const teamParam = hub?.team?.id ? `?team=${encodeURIComponent(hub.team.id)}` : '';
+      const activeTeam = hub?.team?.id || storageGet('tld_team_id');
+      const teamParam = activeTeam ? `?team=${encodeURIComponent(activeTeam)}` : '';
       window.open(`https://intro-stroyline.vercel.app/${teamParam}`, '_blank', 'noopener,noreferrer');
       toast('LAUNCHED INTRO STORYLINE & SANCTUARY IN NEW TAB ↗');
       updateBriefingGateStatus();
@@ -610,9 +638,24 @@
         refreshBootstrap({ animate: true });
         toast('SECTOR PROGRESS SYNCHRONIZED · VAULT UPDATED');
       }
+      if (event.data?.type === 'PURPLE_ESCAPE_QUALIFIED') {
+        refreshBootstrap({ animate: true }).then(() => {
+          playFinale();
+        });
+        toast('PRALAYA CORE ESCAPE GATE BREACHED! SURVIVOR COMPLETE!');
+      }
     });
     $('#logout-button').addEventListener('click', async () => {
-      try { await api('/api/logout', { method: 'POST', body: {} }); hub = null; setSound(false); await navigate('hero', { saveView: false, force: true }); toast('SESSION DISCONNECTED. YOUR TEAM PROGRESS IS PRESERVED.'); }
+      try {
+        await api('/api/logout', { method: 'POST', body: {} });
+        hub = null;
+        storageRemove('tld_session_id');
+        storageRemove('tld_team_id');
+        storageRemove('tld_delegate_id');
+        setSound(false);
+        await navigate('hero', { saveView: false, force: true });
+        toast('SESSION DISCONNECTED. YOUR TEAM PROGRESS IS PRESERVED.');
+      }
       catch (error) { toast(error.message || 'Could not disconnect.', true); }
     });
     $('#hud-sound').addEventListener('click', () => setSound($('#hud-sound').getAttribute('aria-pressed') !== 'true'));
@@ -666,8 +709,17 @@
       title.classList.add('glitch'); setTimeout(() => title.classList.remove('glitch'), 600);
     }, 6300);
     try {
-      const data = await api('/api/bootstrap');
+      const urlParams = new URLSearchParams(window.location.search);
+      const queryTeam = (urlParams.get('team') || urlParams.get('teamId') || '').trim();
+      if (queryTeam) storageSet('tld_team_id', queryTeam);
+      const activeTeam = queryTeam || storageGet('tld_team_id');
+      const bootUrl = activeTeam ? `/api/bootstrap?team=${encodeURIComponent(activeTeam)}` : '/api/bootstrap';
+
+      const data = await api(bootUrl);
       if (data.authenticated) {
+        if (data.sessionId) storageSet('tld_session_id', data.sessionId);
+        if (data.team?.id) storageSet('tld_team_id', data.team.id);
+        if (data.player?.delegateId) storageSet('tld_delegate_id', data.player.delegateId);
         applyBootstrap(data);
         if (data.view?.screen === 'zone' && data.view.zoneId) await showZone(data.view.zoneId, { saveView: false, instant: true });
         else if (data.view?.screen === 'ctf' && data.view.ctfId) await openCtf(data.view.ctfId, { instant: true });

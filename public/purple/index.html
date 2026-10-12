@@ -1,0 +1,670 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>PRALAYA CORE // ML SURVIVAL EVALUATOR — THE LAST DATASET</title>
+  <link rel="stylesheet" href="/purple/purple.css?v=20261012">
+  <script src="/purple/purple.js?v=20261012" defer></script>
+</head>
+<body>
+  <div class="scanlines" aria-hidden="true"></div>
+
+  <!-- TOP NAVIGATION BAR -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <a href="/#map" class="back-btn" title="Return to Sanctuary Tactical World Map">← WORLD MAP</a>
+      <div class="brand-badge">
+        <div class="brand-glyph">L/D</div>
+        <div class="brand-text">
+          <h1>PRALAYA CORE</h1>
+          <small>SECTOR 05 // ML EVALUATOR</small>
+        </div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="team-pill">
+        <span id="team-display">INITIALIZING LINK…</span>
+        <span id="team-score" class="pts">-- PTS</span>
+      </div>
+      <div id="gate-status-pill" class="gate-status-pill">
+        <span class="dot-indicator"></span> TRANSIT GATE: LOCKED
+      </div>
+    </div>
+  </header>
+
+  <!-- ARENA HERO -->
+  <section class="arena-hero">
+    <div class="hero-tag">⌘ QUARANTINE CORE · ANOMALY CONVERGENCE</div>
+    <h2>PRALAYA <span>SURVIVAL EVALUATOR</span></h2>
+    <p>Reconstruct test.csv from the 4 recovered sector archives. Train your predictive model on train.csv to evaluate resident survival probabilities and break the Core Quarantine.</p>
+  </section>
+
+  <!-- PERSISTENT HELICOPTER EXTRACTION NOTIFICATION BANNER (Visible once R² ≥ 0.80) -->
+  <div id="helicopter-active-banner" class="helicopter-active-banner" hidden>
+    <div class="heli-banner-left">
+      <span class="heli-banner-icon">🚁</span>
+      <div class="heli-banner-content">
+        <h4>EXTRACTION TRANSPORTER EX-09 AWAITING CREW AT TACTICAL PAD 01</h4>
+        <p>R² threshold of 80.00% satisfied. Evacuation authorization verified. All 120 survivor records secured. Board the transport to initiate the recovery sequence.</p>
+      </div>
+    </div>
+    <button id="btn-view-helipad" class="heli-banner-btn">VIEW EXTRACTION HELIPAD ↗</button>
+  </div>
+
+  <!-- KAGGLE-STYLE TABS -->
+  <nav class="tabs-container" aria-label="Competition sections">
+    <button class="tab-btn active" data-tab="overview">
+      <span>▤ OVERVIEW</span>
+    </button>
+    <button class="tab-btn" data-tab="data">
+      <span>◈ DATA & RECONSTRUCTION</span>
+    </button>
+    <button class="tab-btn" data-tab="submit">
+      <span>↗ SUBMIT PREDICTIONS</span>
+    </button>
+    <button class="tab-btn" data-tab="submissions">
+      <span>⌁ MY SUBMISSIONS</span>
+      <span id="sub-count-badge" class="tab-count">0</span>
+    </button>
+    <button class="tab-btn" data-tab="leaderboard">
+      <span>★ LEADERBOARD</span>
+    </button>
+  </nav>
+
+  <!-- MAIN TAB PANELS -->
+  <main class="main-content">
+
+    <!-- ====================================================================
+         TAB 1: OVERVIEW & BRIEFING
+         ==================================================================== -->
+    <div id="tab-overview" class="tab-panel active">
+      <div class="panel-grid">
+        <div class="card">
+          <div class="card-title">
+            <h3>MISSION BRIEFING // THE COLLAPSE AT THE CORE</h3>
+            <span class="badge badge-purple">PRIMARY DIRECTIVE</span>
+          </div>
+          <p style="margin-bottom: 16px; color: var(--text-dim); line-height: 1.7;">
+            As biological degradation swept through the outer perimeter, four critical archive fragments were partitioned and scattered across the city's quarantine sectors. Survivors who breached Yellow, Blue, Orange, and Red zones recovered those fragments:
+          </p>
+          <ul style="margin: 0 0 20px 20px; color: var(--text-dim); line-height: 1.8; font-size: 13px;">
+            <li><strong style="color:#f5c518;">Yellow Zone</strong>: Community Archive (20 features) — resident roles, housing records, participation scores.</li>
+            <li><strong style="color:#56c8ff;">Blue Zone</strong>: Radio Communication Transmissions (18 features) — network centrality, emergency broadcasts, voice notes.</li>
+            <li><strong style="color:#ff8b3d;">Orange Zone</strong>: Burning Refinery Forensics (18 features) — authenticity scores, alteration flags, audit logs.</li>
+            <li><strong style="color:#ff4058;">Red Zone</strong>: Active Infection Research (25 features) — immunity indexes, biometrics, vital telemetry.</li>
+          </ul>
+
+          <div class="card-title" style="margin-top: 24px;">
+            <h3>THE EVALUATION OBJECTIVE</h3>
+          </div>
+          <p style="color: var(--text-dim); line-height: 1.7; margin-bottom: 14px;">
+            At the Core, you are granted access to <code style="color:var(--purple-bright);font-family:var(--font-mono);">train.csv</code> (450 historical residents with confirmed labels). You must reconstruct the 120 active survivors in <code style="color:var(--purple-bright);font-family:var(--font-mono);">test.csv</code> by performing an inner merge across all four zone fragments using <code style="color:var(--purple-bright);font-family:var(--font-mono);">Sanctuary_ID</code> (SANC-0001 through SANC-0120).
+          </p>
+          <p style="color: var(--text-dim); line-height: 1.7;">
+            Train a machine learning regression model to predict <code style="color:var(--purple-bright);font-family:var(--font-mono);">Survival_Probability</code> for each of the 120 residents. Transmit your predictions in the <strong>SUBMIT PREDICTIONS</strong> terminal.
+          </p>
+        </div>
+
+        <div>
+          <!-- CRITICAL METRIC CARD -->
+          <div class="card" style="margin-bottom: 20px;">
+            <div class="card-title">
+              <h3>EVALUATION METRIC</h3>
+              <span class="badge badge-green">R² COEFFICIENT</span>
+            </div>
+            <p style="font-size: 13px; color: var(--text-dim); line-height: 1.6; margin-bottom: 12px;">
+              Submissions are scored against hidden private ground truth using the Coefficient of Determination (R²) and Mean Squared Error (MSE):
+            </p>
+            <div style="background: rgba(0,0,0,0.4); padding: 12px; border-radius: 4px; font-family: var(--font-mono); font-size: 13px; text-align: center; color: var(--purple-bright); margin-bottom: 12px;">
+              R² = 1 − ( Σ (y_true − y_pred)² / Σ (y_true − y_mean)² )
+            </div>
+            <div style="padding: 10px; background: rgba(74, 222, 128, 0.08); border: 1px solid rgba(74, 222, 128, 0.25); border-radius: 4px; font-size: 12px; color: #86efac;">
+              <strong>ESCAPE THRESHOLD: R² ≥ 0.80 (80.00%)</strong><br>
+              A score of 80% or higher immediately authorizes the Core Transit Gate evacuation protocol.
+            </div>
+          </div>
+
+          <!-- SUBMISSION RULES CARD -->
+          <div class="card">
+            <div class="card-title">
+              <h3>SUBMISSION FORMAT RULES</h3>
+            </div>
+            <ul style="margin-left: 18px; font-size: 12px; color: var(--text-dim); line-height: 1.8;">
+              <li>File format: Valid CSV (<code style="color:#fff;">.csv</code>).</li>
+              <li>Header must be: <code style="color:#fff;font-family:var(--font-mono);">Sanctuary_ID,Survival_Probability</code>.</li>
+              <li>Must contain exactly 120 prediction rows matching SANC-0001 through SANC-0120.</li>
+              <li>Probabilities must be numeric floats in range [0.0, 1.0].</li>
+              <li>Rate limit: Strict maximum 10 submissions per team.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====================================================================
+         TAB 2: DATA & RECONSTRUCTION HUB
+         ==================================================================== -->
+    <div id="tab-data" class="tab-panel">
+      <div class="card" style="margin-bottom: 24px;">
+        <div class="card-title">
+          <h3>DATASET DOWNLOAD VAULT // VERIFIED ARTIFACTS</h3>
+          <span class="badge badge-green">ALL ARCHIVES ACCESSIBLE</span>
+        </div>
+        <p style="font-size: 13px; color: var(--text-dim); line-height: 1.6;">
+          Directly download all training records, your recovered zone fragments, and the official benchmark submission template.
+        </p>
+
+        <div class="download-grid">
+          <!-- train.csv -->
+          <div class="download-card">
+            <div>
+              <h4>◈ train.csv</h4>
+              <p>Historical labeled records (450 rows × 79 features). Includes verified Survival_Probability ground truth.</p>
+            </div>
+            <a href="/api/dataset/train" download="train.csv" class="download-btn">DOWNLOAD TRAIN (425 KB) ⤓</a>
+          </div>
+
+          <!-- sample_submission.csv -->
+          <div class="download-card">
+            <div>
+              <h4>◈ sample_submission.csv</h4>
+              <p>Benchmark template with the exact 120 Sanctuary IDs and baseline probabilities (0.5000).</p>
+            </div>
+            <a href="/api/dataset/sample_submission" download="sample_submission.csv" class="download-btn" style="background:#5b21b6;">DOWNLOAD TEMPLATE (4 KB) ⤓</a>
+          </div>
+
+          <!-- community_final.csv -->
+          <div class="download-card">
+            <div>
+              <h4 style="color:#f5c518;">⚠ community_final.csv</h4>
+              <p>Yellow Zone Reward: Community and housing demographics (120 survivors × 20 features).</p>
+            </div>
+            <a href="/api/dataset/community_final" download="community_final.csv" class="download-btn">DOWNLOAD YELLOW (20 KB) ⤓</a>
+          </div>
+
+          <!-- radio_final.csv -->
+          <div class="download-card">
+            <div>
+              <h4 style="color:#56c8ff;">≈ radio_final.csv</h4>
+              <p>Blue Zone Reward: Radio comms, emergency telemetry, and contact chains (120 survivors × 18 features).</p>
+            </div>
+            <a href="/api/dataset/radio_final" download="radio_final.csv" class="download-btn">DOWNLOAD BLUE (22 KB) ⤓</a>
+          </div>
+
+          <!-- forensics_final.csv -->
+          <div class="download-card">
+            <div>
+              <h4 style="color:#ff8b3d;">⌁ forensics_final.csv</h4>
+              <p>Orange Zone Reward: Vault records, authenticity scores, and alteration logs (120 survivors × 18 features).</p>
+            </div>
+            <a href="/api/dataset/forensics_final" download="forensics_final.csv" class="download-btn">DOWNLOAD ORANGE (27 KB) ⤓</a>
+          </div>
+
+          <!-- research_final.csv -->
+          <div class="download-card">
+            <div>
+              <h4 style="color:#ff4058;">✣ research_final.csv</h4>
+              <p>Red Zone Reward: Infection telemetry, immunity, exposure, and resilience scores (120 survivors × 25 features).</p>
+            </div>
+            <a href="/api/dataset/research_final" download="research_final.csv" class="download-btn">DOWNLOAD RED (48 KB) ⤓</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- STARTER PYTHON NOTEBOOK / SCRIPT -->
+      <div class="card">
+        <div class="card-title">
+          <h3>PYTHON STARTER CODE // 4-ZONE MERGE & CATBOOST PIPELINE</h3>
+          <button id="btn-copy-code" class="copy-btn">COPY CODE ⎘</button>
+        </div>
+        <p style="font-size: 13px; color: var(--text-dim); margin-bottom: 8px;">
+          Use this script to merge the 4 fragments into a unified test set, clean missing values, train an ensemble model, and generate your submission file.
+        </p>
+
+        <div class="code-box">
+          <div class="code-header">
+            <span>reconstruct_and_predict.py</span>
+            <span>Python 3.10+ / pandas / catboost / scikit-learn</span>
+          </div>
+          <pre id="python-starter-code"><code>import pandas as pd
+import numpy as np
+from catboost import CatBoostRegressor
+from sklearn.linear_model import ElasticNet
+from sklearn.metrics import r2_score
+
+# ============================================================
+# 1. LOAD & RECONSTRUCT TEST SET FROM 4 ZONE FRAGMENTS
+# ============================================================
+print("Reconstructing test.csv across 4 sector archives...")
+comm = pd.read_csv("community_final.csv")
+radio = pd.read_csv("radio_final.csv")
+foren = pd.read_csv("forensics_final.csv")
+res = pd.read_csv("research_final.csv")
+
+# Inner join on Sanctuary_ID (120 survivors x 78 feature columns)
+test = comm.merge(radio, on="Sanctuary_ID", how="inner") \
+           .merge(foren, on="Sanctuary_ID", how="inner") \
+           .merge(res, on="Sanctuary_ID", how="inner")
+
+print(f"Test Set Reconstructed: {test.shape[0]} rows, {test.shape[1]} columns")
+
+# ============================================================
+# 2. LOAD TRAINING DATA
+# ============================================================
+train = pd.read_csv("train.csv")
+TARGET = "Survival_Probability"
+y_train = train[TARGET].values
+
+# ============================================================
+# 3. FEATURE SELECTION & PREPROCESSING
+# ============================================================
+drop_cols = ["Historical_ID", "Sanctuary_ID", TARGET, "Incident_Link_ID", 
+             "Duty_Ref", "Vault_Case_ID", "Transfer_Manifest_ID", "Medical_Tag_ID"]
+
+features = [c for c in train.columns if c not in drop_cols and c in test.columns]
+X_train = train[features].copy()
+X_test = test[features].copy()
+
+# Categorical column handling
+cat_cols = X_train.select_dtypes(include=["object"]).columns.tolist()
+for c in cat_cols:
+    X_train[c] = X_train[c].astype(str).fillna("Missing")
+    X_test[c] = X_test[c].astype(str).fillna("Missing")
+
+# Numerical column median imputation
+num_cols = [c for c in features if c not in cat_cols]
+for c in num_cols:
+    med = X_train[c].median()
+    X_train[c] = X_train[c].fillna(med)
+    X_test[c] = X_test[c].fillna(med)
+
+# ============================================================
+# 4. TRAIN MODEL (CATBOOST REGRESSOR)
+# ============================================================
+print("Training CatBoost Survival Predictor...")
+model = CatBoostRegressor(
+    iterations=800,
+    learning_rate=0.04,
+    depth=6,
+    cat_features=cat_cols,
+    random_seed=42,
+    verbose=100
+)
+model.fit(X_train, y_train)
+
+# ============================================================
+# 5. GENERATE PREDICTIONS & SUBMISSION CSV
+# ============================================================
+raw_preds = model.predict(X_test)
+preds_clipped = np.clip(raw_preds, 0.0, 1.0)
+
+submission = pd.DataFrame({
+    "Sanctuary_ID": test["Sanctuary_ID"],
+    "Survival_Probability": np.round(preds_clipped, 6)
+})
+
+submission.to_csv("my_submission.csv", index=False)
+print("SUCCESS: 'my_submission.csv' generated with 120 prediction rows!")
+print("Transmit 'my_submission.csv' in the SUBMIT PREDICTIONS tab.")</code></pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====================================================================
+         TAB 3: SUBMIT PREDICTIONS (THE EVALUATOR)
+         ==================================================================== -->
+    <div id="tab-submit" class="tab-panel">
+      <div class="panel-grid">
+        <div>
+          <div class="card">
+            <div class="card-title">
+              <h3>TRANSMIT MODEL PREDICTIONS</h3>
+              <button id="btn-paste-csv" class="copy-btn">OR PASTE CSV TEXT ⎘</button>
+            </div>
+            <p style="font-size: 13px; color: var(--text-dim); margin-bottom: 20px;">
+              Upload your reconstructed predictions CSV. The Core Evaluator will calculate your R² score and Mean Squared Error against the hidden ground truth.
+            </p>
+
+            <!-- DRAG & DROP ZONE -->
+            <div id="upload-dropzone" class="upload-dropzone">
+              <span class="upload-icon">⇪</span>
+              <h4>DROP YOUR SUBMISSION CSV HERE</h4>
+              <p>or click to select file from your terminal</p>
+              <input type="file" id="file-input" class="file-input" accept=".csv,text/csv">
+            </div>
+
+            <!-- PRE-FLIGHT LINT CHECKLIST -->
+            <div id="preflight-card" class="preflight-card" hidden>
+              <div class="preflight-header">
+                <span>⌁ PRE-FLIGHT FORMAT INSPECTION // <span id="check-filename">submission.csv</span></span>
+              </div>
+              <div class="check-item">
+                <span>Header Format (Sanctuary_ID, Survival_Probability)</span>
+                <span id="check-header" class="check-status pass">PASS ✓</span>
+              </div>
+              <div class="check-item">
+                <span>Row Count (Exactly 120 survivor records)</span>
+                <span id="check-count" class="check-status pass">120/120 PASS ✓</span>
+              </div>
+              <div class="check-item">
+                <span>Sanctuary ID Verification (SANC-0001 .. SANC-0120)</span>
+                <span id="check-ids" class="check-status pass">ALL VALID ✓</span>
+              </div>
+              <div class="check-item">
+                <span>Probability Value Bounds [0.000 - 1.000]</span>
+                <span id="check-range" class="check-status pass">IN BOUNDS ✓</span>
+              </div>
+            </div>
+
+            <!-- SUBMISSION QUOTA TRACKER -->
+            <div style="display:flex; justify-content:space-between; align-items:center; margin: 16px 0 10px;">
+              <div id="quota-display" class="quota-pill">
+                SUBMISSION QUOTA: <strong id="quota-used-text" style="color:#fff;">0</strong> / 10 USED
+              </div>
+              <span id="quota-remaining-text" style="font-family:var(--font-mono); font-size:11px; color:var(--text-dim);">10 ATTEMPTS REMAINING</span>
+            </div>
+
+            <!-- EXHAUSTION WARNING -->
+            <div id="quota-exhausted-banner" class="quota-banner" hidden>
+              <span>⚠️</span>
+              <div>
+                <strong>SUBMISSION QUOTA EXHAUSTED (10/10 SUBMISSIONS USED)</strong><br>
+                <span>The Core Evaluator strictly limits teams to 10 submissions. Your highest score remains saved on the leaderboard.</span>
+              </div>
+            </div>
+
+            <button id="btn-submit-eval" class="submit-btn" disabled>
+              TRANSMIT TO PRALAYA CORE EVALUATOR →
+            </button>
+          </div>
+
+          <!-- EVALUATION SCORECARD / GAUGE -->
+          <div id="scorecard" class="scorecard" hidden>
+            <div class="card-title" style="margin-bottom: 12px; border: none; padding: 0;">
+              <h3 style="color:var(--purple-bright);">EVALUATION SCORECARD // CORE ANOMALY RESPONSE</h3>
+              <span class="badge badge-purple">STRICT METRIC</span>
+            </div>
+
+            <div class="score-stats">
+              <div class="stat-box r2">
+                <span>COEFFICIENT OF DETERMINATION (R²)</span>
+                <strong id="res-r2">0.00%</strong>
+              </div>
+              <div class="stat-box">
+                <span>MEAN SQUARED ERROR (MSE)</span>
+                <strong id="res-mse">0.000000</strong>
+              </div>
+              <div class="stat-box">
+                <span>ESCAPE THRESHOLD</span>
+                <strong>≥ 80.00%</strong>
+              </div>
+            </div>
+
+            <div id="qualify-banner" class="qualify-banner pending">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <!-- TIPS & ADVICE CARD -->
+          <div class="card" style="margin-bottom: 20px;">
+            <div class="card-title">
+              <h3>CORE MODELING TIPS</h3>
+            </div>
+            <div style="font-size: 12px; color: var(--text-dim); line-height: 1.8;">
+              <p><strong>1. Join Keys:</strong> Inner merge all 4 files on <code style="color:#fff;">Sanctuary_ID</code>. All 120 test survivors exist across all 4 fragments.</p>
+              <p style="margin-top:8px;"><strong>2. Ensembling:</strong> Blend CatBoost with ElasticNet or Ridge Regression for higher R² stability.</p>
+              <p style="margin-top:8px;"><strong>3. Timestamp Features:</strong> Extract year, day of week, and elapsed hours from <code style="color:#fff;">Last_Response_Timestamp</code>.</p>
+              <p style="margin-top:8px;"><strong>4. Clipping:</strong> Always clip probabilities to [0.0, 1.0] to prevent MSE penalties.</p>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">
+              <h3>SYSTEM TELEMETRY</h3>
+            </div>
+            <div style="font-family:var(--font-mono); font-size: 11px; color: var(--text-muted); line-height: 2;">
+              <div>EVALUATOR PROTOCOL: SHA-256 HMAC</div>
+              <div>RATE LIMIT: 15 ATTEMPTS / HR</div>
+              <div>PRIVATE TEST ANSWER KEY: HIDDEN</div>
+              <div>AUTHORITATIVE DB: SUPABASE PG</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====================================================================
+         TAB 4: MY SUBMISSIONS
+         ==================================================================== -->
+    <div id="tab-submissions" class="tab-panel">
+      <div class="card">
+        <div class="card-title">
+          <h3>TEAM SUBMISSION HISTORY // CORE LOG</h3>
+          <button class="copy-btn" onclick="loadSubmissions()">↻ REFRESH HISTORY</button>
+        </div>
+        <p style="font-size: 13px; color: var(--text-dim); margin-bottom: 16px;">
+          Chronological record of all models submitted by your team to the PRALAYA Core Evaluator.
+        </p>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>SUBMITTED AT</th>
+                <th>FILENAME</th>
+                <th>R² SCORE</th>
+                <th>MSE SCORE</th>
+                <th>STATUS / ESCAPE GATE</th>
+              </tr>
+            </thead>
+            <tbody id="submissions-table-body">
+              <tr>
+                <td colspan="6" style="text-align: center; color: #666;">SCANNING ARCHIVE LOGS…</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====================================================================
+         TAB 5: LIVE LEADERBOARD
+         ==================================================================== -->
+    <div id="tab-leaderboard" class="tab-panel">
+      <div class="card">
+        <div class="card-title">
+          <h3>PRALAYA GLOBAL LEADERBOARD // SURVIVOR STANDINGS</h3>
+          <button class="copy-btn" onclick="loadLeaderboard()">↻ REFRESH STANDINGS</button>
+        </div>
+        <p style="font-size: 13px; color: var(--text-dim); margin-bottom: 16px;">
+          Rankings are updated live from the central PostgreSQL database. Ranked primarily by Total Score, then Best R² Score, and completion timestamp.
+        </p>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>RANK</th>
+                <th>TEAM CALLSIGN</th>
+                <th>BEST R² SCORE</th>
+                <th>ESCAPE GATE</th>
+                <th>TOTAL SCORE</th>
+                <th>SOLVED CTFS</th>
+              </tr>
+            </thead>
+            <tbody id="leaderboard-table-body">
+              <tr>
+                <td colspan="6" style="text-align: center; color: #666;">ACQUIRING GLOBAL LEADERBOARD…</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- TOAST NOTIFICATION CONTAINER -->
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <!-- ====================================================================
+       TACTICAL HELIPAD & HELICOPTER EXTRACTION STAGE MODAL
+       ==================================================================== -->
+  <div id="extraction-modal" class="extraction-modal-overlay" aria-hidden="true">
+    <div class="extraction-stage-container">
+      <div class="extraction-stage-header">
+        <h3>
+          <span class="dot-indicator" style="background:#22c55e;"></span>
+          TACTICAL EVACUATION IN PROGRESS // TRANSPORTER EX-09
+        </h3>
+        <button id="btn-close-stage" class="stage-close-btn" title="Close Stage">✕</button>
+      </div>
+
+      <!-- Atmospheric Helipad Stage Arena -->
+      <div class="helipad-stage">
+        <!-- Night Mist & Atmosphere -->
+        <div class="helipad-atmosphere">
+          <div class="atmospheric-glow-purple"></div>
+          <div class="atmospheric-glow-cyan"></div>
+        </div>
+
+        <!-- Windsock Mast with Strobe -->
+        <div class="helipad-windsock">
+          <div class="windsock-light"></div>
+          <div class="windsock-mast"></div>
+          <div class="windsock-cone"></div>
+        </div>
+
+        <!-- Helicopter Aircraft Rig -->
+        <div id="helicopter-rig" class="helicopter-rig approach">
+          <!-- Downward Searchlight Projection Cone -->
+          <div id="helicopter-searchlight" class="helicopter-searchlight"></div>
+
+          <!-- SVG Industrial Extraction Aircraft -->
+          <svg viewBox="0 0 400 220" width="100%" height="100%" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="fuselageGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#282038" />
+                <stop offset="40%" stop-color="#1a1426" />
+                <stop offset="100%" stop-color="#0f0c17" />
+              </linearGradient>
+              <linearGradient id="canopyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.45" />
+                <stop offset="35%" stop-color="#1e293b" stop-opacity="0.8" />
+                <stop offset="100%" stop-color="#090d16" stop-opacity="0.95" />
+              </linearGradient>
+              <linearGradient id="metalSkid" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#5b4878" />
+                <stop offset="50%" stop-color="#322646" />
+                <stop offset="100%" stop-color="#1e162d" />
+              </linearGradient>
+              <filter id="rotorBlur" x="-30%" y="-30%" width="160%" height="160%">
+                <feGaussianBlur stdDeviation="2.5" />
+              </filter>
+            </defs>
+
+            <!-- 1. Main Rotor Blades & Mast -->
+            <rect x="176" y="44" width="8" height="18" fill="#44355e" rx="1" />
+            <rect x="174" y="40" width="12" height="6" fill="#69538f" rx="1" />
+            <g transform="translate(180, 42)">
+              <g id="main-rotor-blades" class="animate-rotor-blur">
+                <line x1="-150" y1="0" x2="150" y2="0" stroke="#7e5da8" stroke-width="3.5" stroke-linecap="round" filter="url(#rotorBlur)" />
+                <line x1="-150" y1="0" x2="150" y2="0" stroke="#e9d5ff" stroke-width="1" stroke-linecap="round" opacity="0.6" />
+                <line x1="-106" y1="-106" x2="106" y2="106" stroke="#4c346c" stroke-width="2.5" stroke-linecap="round" opacity="0.4" />
+                <line x1="106" y1="-106" x2="-106" y2="106" stroke="#4c346c" stroke-width="2.5" stroke-linecap="round" opacity="0.4" />
+                <circle cx="0" cy="0" r="6" fill="#a855f7" />
+                <circle cx="0" cy="0" r="2.5" fill="#f5f3ff" />
+              </g>
+              <ellipse cx="0" cy="0" rx="155" ry="7" fill="rgba(168, 85, 247, 0.15)" />
+            </g>
+
+            <!-- 2. Tail Boom & Fin -->
+            <polygon points="180,95 330,86 330,96 180,118" fill="url(#fuselageGrad)" stroke="#392a52" stroke-width="1" />
+            <line x1="200" y1="98" x2="310" y2="92" stroke="#4c396e" stroke-width="1" stroke-dasharray="6 3" opacity="0.6" />
+            <polygon points="325,92 346,45 358,45 348,102" fill="#251c36" stroke="#433261" stroke-width="1" />
+            <polygon points="334,60 348,50 345,62" fill="#7e3af2" opacity="0.8" />
+            <path d="M 315,90 L 338,87 L 340,94 L 316,95 Z" fill="#32244a" stroke="#4a366e" stroke-width="0.8" />
+
+            <!-- Tail Rotor -->
+            <g transform="translate(352, 54)">
+              <circle cx="0" cy="0" r="3" fill="#a855f7" />
+              <g class="animate-rotor-blur">
+                <line x1="0" y1="-22" x2="0" y2="22" stroke="#9333ea" stroke-width="2" stroke-linecap="round" />
+                <line x1="-16" y1="-16" x2="16" y2="16" stroke="#4a366e" stroke-width="1.5" stroke-linecap="round" opacity="0.5" />
+              </g>
+            </g>
+
+            <!-- 3. Main Fuselage Body -->
+            <path d="M 85,138 C 72,132 64,118 64,102 C 64,82 82,68 115,64 L 185,62 C 215,62 235,76 220,110 L 190,136 Z" fill="url(#fuselageGrad)" stroke="#41305c" stroke-width="1.5" />
+            <path d="M 125,64 L 180,62 L 182,78 L 122,80 Z" fill="#1c1529" stroke="#4a3769" stroke-width="1" />
+            <line x1="135" y1="68" x2="148" y2="68" stroke="#7e5ba8" stroke-width="1.5" />
+            <line x1="135" y1="72" x2="148" y2="72" stroke="#7e5ba8" stroke-width="1.5" />
+            <line x1="135" y1="76" x2="148" y2="76" stroke="#7e5ba8" stroke-width="1.5" />
+
+            <!-- Cockpit Canopy Glass -->
+            <path d="M 68,98 C 68,85 82,73 105,70 L 125,69 L 122,108 L 80,116 Z" fill="url(#canopyGrad)" stroke="#473463" stroke-width="1.2" />
+            <path d="M 78,88 C 88,78 102,74 116,73 L 114,84 C 102,86 90,91 82,97 Z" fill="#e0f2fe" opacity="0.25" />
+
+            <!-- Tactical Details & Text -->
+            <line x1="125" y1="78" x2="125" y2="134" stroke="#36264d" stroke-width="1.2" />
+            <line x1="158" y1="64" x2="158" y2="136" stroke="#36264d" stroke-width="1.2" />
+            <text x="132" y="118" fill="#b39ddb" font-size="8" font-family="monospace" font-weight="700" letter-spacing="1">EX-09 PROTOCOL</text>
+            <rect x="132" y="122" width="28" height="2" fill="#7e3af2" />
+
+            <!-- Hazard chevron on door -->
+            <g transform="translate(166, 110)">
+              <rect x="0" y="0" width="12" height="6" fill="#1b1429" stroke="#5b437e" stroke-width="0.6" />
+              <line x1="2" y1="5" x2="5" y2="1" stroke="#f59e0b" stroke-width="1" />
+              <line x1="6" y1="5" x2="9" y2="1" stroke="#f59e0b" stroke-width="1" />
+            </g>
+
+            <!-- 4. Heavy Industrial Landing Skids -->
+            <line x1="105" y1="130" x2="95" y2="158" stroke="#3e2d5c" stroke-width="3" stroke-linecap="round" />
+            <line x1="170" y1="132" x2="160" y2="158" stroke="#3e2d5c" stroke-width="3" stroke-linecap="round" />
+            <line x1="100" y1="144" x2="165" y2="144" stroke="#2c1f44" stroke-width="2" />
+            <path d="M 72,154 C 76,158 84,159 90,159 L 190,159 C 194,159 198,157 200,154" stroke="url(#metalSkid)" stroke-width="4" stroke-linecap="round" />
+
+            <!-- 5. Strobe & Navigation Lights -->
+            <circle cx="64" cy="105" r="4" fill="#1a1426" stroke="#4c396e" stroke-width="1" />
+            <circle cx="64" cy="105" r="2.5" fill="#f0abfc" />
+            <circle cx="188" cy="62" r="3" fill="#e11d48" class="animate-strobe" />
+            <circle cx="346" cy="46" r="2.5" fill="#38bdf8" class="animate-strobe" />
+            <ellipse cx="140" cy="164" rx="65" ry="3.5" fill="#000000" opacity="0.75" />
+          </svg>
+        </div>
+
+        <!-- Helipad Platform -->
+        <div class="helipad-platform">
+          <div class="helipad-status-label">
+            <span class="dot-indicator" style="background:#38bdf8;"></span>
+            <span>TACTICAL PAD 01 // AZIMUTH 042°</span>
+          </div>
+          <div id="helipad-deck-ring" class="helipad-deck-ring active">
+            <div class="helipad-beacon beacon-n"></div>
+            <div class="helipad-beacon beacon-s"></div>
+            <div class="helipad-beacon beacon-w"></div>
+            <div class="helipad-beacon beacon-e"></div>
+            <span class="helipad-deck-letter">H</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stage Bottom Control Deck -->
+      <div class="extraction-control-deck">
+        <div class="extraction-status-readout">
+          <span id="extraction-readout-tag" class="readout-tag">AIRCRAFT TOUCHDOWN CONFIRMED // PAD 01 HOT</span>
+          <span id="extraction-readout-sub" class="readout-sub">Model R² qualification verified. Extraction clearance active for all survivors.</span>
+        </div>
+        <button id="btn-board-transporter" class="btn-board-transporter">
+          BOARD EXTRACTION TRANSPORTER EX-09 →
+        </button>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

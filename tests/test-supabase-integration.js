@@ -209,6 +209,133 @@ async function runTests() {
     const topTeam = leadJson.leaderboard.find((t) => t.team_id === 'TECHTEAM10328');
     assert(!!topTeam && topTeam.escape_unlocked === true, 'Leaderboard accurately reflects team score and escape status');
 
+    // 11. Test Purple Zone Static Route, Sample Submission Download, and Submissions History
+    console.log('\n--- 11. Testing Purple Zone Integration Endpoints ---');
+    const purplePageRes = await fetch(`${baseUrl}/purple`);
+    assert(purplePageRes.status === 200, 'GET /purple returns 200 OK');
+    const purpleHtml = await purplePageRes.text();
+    assert(purpleHtml.includes('PRALAYA CORE') && purpleHtml.includes('SURVIVAL EVALUATOR'), 'GET /purple serves Purple Zone HTML');
+
+    const sampleSubRes = await fetch(`${baseUrl}/api/dataset/sample_submission`, {
+      headers: { Cookie: sessionCookie }
+    });
+    assert(sampleSubRes.status === 200, 'GET /api/dataset/sample_submission returns 200 OK');
+    const sampleSubCsv = await sampleSubRes.text();
+    assert(sampleSubCsv.includes('Sanctuary_ID,Survival_Probability') && sampleSubCsv.includes('SANC-0091'), 'sample_submission.csv has valid headers and rows');
+
+    const subsRes = await fetch(`${baseUrl}/api/ml/submissions`, {
+      headers: { Cookie: sessionCookie }
+    });
+    assert(subsRes.status === 200, 'GET /api/ml/submissions returns 200 OK');
+    const subsJson = await subsRes.json();
+    assert(Array.isArray(subsJson.submissions) && subsJson.submissions.length >= 2, `Returns team submissions history (count: ${subsJson.submissions?.length})`);
+    assert(subsJson.submissions.some((s) => s.qualifies_for_escape === true), 'Submission history records qualified escape submission');
+    assert(subsJson.maxAllowed === 10, 'Max allowed submissions is strictly 10');
+    assert(subsJson.submissionsRemaining <= 8, 'Accurately computes submissions remaining out of 10');
+
+    // 12. Test Strict 10 Submission Quota Limit
+    console.log('\n--- 12. Testing Strict 10 Submission Quota Limit ---');
+    const currentCount = subsJson.submissions.length;
+    for (let i = currentCount; i < 10; i++) {
+      const fillRes = await fetch(`${baseUrl}/api/ml/evaluate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Cookie: sessionCookie },
+        body: JSON.stringify({ csvContent: samplePreds, rawFilename: `quota_test_${i}.csv` })
+      });
+      assert(fillRes.status === 200, `Submission ${i + 1}/10 allowed`);
+    }
+
+    // Attempt 11th submission (must be strictly blocked)
+    const blockedRes = await fetch(`${baseUrl}/api/ml/evaluate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Cookie: sessionCookie },
+      body: JSON.stringify({ csvContent: samplePreds, rawFilename: 'attempt_11_forbidden.csv' })
+    });
+    assert(blockedRes.status === 429, '11th submission is rejected with HTTP 429');
+    const blockedJson = await blockedRes.json();
+    assert(blockedJson.error === 'SUBMISSION_LIMIT_EXCEEDED', 'Returns SUBMISSION_LIMIT_EXCEEDED error code');
+    assert(blockedJson.maxAllowed === 10, 'Reflects maxAllowed = 10 limit');
+
+    // 13. Verify Helicopter & Helipad Assets in Purple Zone HTML
+    console.log('\n--- 13. Verifying Helicopter & Helipad Components ---');
+    assert(purpleHtml.includes('extraction-modal'), 'Purple Zone contains tactical extraction modal');
+    assert(purpleHtml.includes('helicopter-rig'), 'Purple Zone contains animated vector helicopter rig');
+    assert(purpleHtml.includes('helipad-platform'), 'Purple Zone contains tactical helipad deck');
+    assert(purpleHtml.includes('helicopter-active-banner'), 'Purple Zone contains persistent helicopter notification banner');
+    assert(purpleHtml.includes('EX-09 PROTOCOL'), 'Helicopter contains EX-09 tactical protocol markings');
+
+    // 14. Testing Reload State Persistence, Cross-Origin Headers & Progression Endpoints
+    console.log('\n--- 14. Testing Reload Persistence & Cross-Origin Progression ---');
+
+    // 14.1 Reload rehydration via ?team= parameter (without session cookie)
+    const reloadUrlRes = await fetch(`${baseUrl}/api/bootstrap?team=TECHTEAM10328`);
+    assert(reloadUrlRes.status === 200, 'GET /api/bootstrap?team=TECHTEAM10328 returns 200 without cookie');
+    const reloadUrlJson = await reloadUrlRes.json();
+    assert(reloadUrlJson.authenticated === true, 'URL parameter ?team= successfully restores authenticated status on reload');
+    assert((reloadUrlJson.teamId || reloadUrlJson.team?.id) === 'TECHTEAM10328', 'URL parameter ?team= restores correct team ID');
+    assert(Array.isArray(reloadUrlJson.zones) && reloadUrlJson.zones.length === 5, 'Bootstrap returns all 5 quarantine zones');
+
+    // 14.2 Reload rehydration via x-team-id header (without session cookie)
+    const reloadHeaderRes = await fetch(`${baseUrl}/api/bootstrap`, {
+      headers: { 'x-team-id': 'TECHTEAM10328' }
+    });
+    assert(reloadHeaderRes.status === 200, 'GET /api/bootstrap with x-team-id header returns 200');
+    const reloadHeaderJson = await reloadHeaderRes.json();
+    assert(reloadHeaderJson.authenticated === true, 'Header x-team-id restores authenticated status on reload');
+    assert((reloadHeaderJson.teamId || reloadHeaderJson.team?.id) === 'TECHTEAM10328', 'Header x-team-id returns correct team ID');
+
+    // 14.3 Cross-Origin Preflight (OPTIONS)
+    const optionsRes = await fetch(`${baseUrl}/api/zone/complete`, {
+      method: 'OPTIONS',
+      headers: {
+        'Origin': 'https://yellowzone-xi.vercel.app',
+        'Access-Control-Request-Method': 'POST',
+        'Access-Control-Request-Headers': 'content-type, x-team-id'
+      }
+    });
+    assert(optionsRes.status === 204, 'OPTIONS preflight returns 204 No Content');
+    assert(optionsRes.headers.get('access-control-allow-origin') === 'https://yellowzone-xi.vercel.app', 'Preflight returns Access-Control-Allow-Origin matching caller origin');
+    assert(optionsRes.headers.get('access-control-allow-headers')?.includes('x-team-id'), 'Preflight permits x-team-id header');
+
+    // 14.4 Cross-Origin Progress Query
+    const progressRes = await fetch(`${baseUrl}/api/team/progress?team=TECHTEAM10328`, {
+      headers: { 'Origin': 'https://bluezone-three.vercel.app' }
+    });
+    assert(progressRes.status === 200, 'GET /api/team/progress returns 200 OK');
+    const progressJson = await progressRes.json();
+    assert((progressJson.teamId || progressJson.team?.id) === 'TECHTEAM10328', 'Progress query returns correct team ID');
+    assert(progressJson.zones?.some(z => z.id === 'yellow'), 'Progress contains yellow zone');
+
+    // 14.5 Cross-Zone Direct Progression: Complete Blue & Orange Zones
+    const blueCompleteRes = await fetch(`${baseUrl}/api/zone/complete`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Origin': 'https://bluezone-three.vercel.app'
+      },
+      body: JSON.stringify({ teamId: 'TECHTEAM10328', zoneId: 'blue' })
+    });
+    assert(blueCompleteRes.status === 200, 'POST /api/zone/complete for Blue Zone returns 200 OK');
+    const blueCompleteJson = await blueCompleteRes.json();
+    assert(blueCompleteJson.ok === true, 'Blue Zone completion acknowledged');
+    const orangeZoneState = blueCompleteJson.bootstrap?.zones?.find(z => z.id === 'orange');
+    assert(orangeZoneState?.unlocked === true, 'Orange Zone unlocked following Blue Zone completion');
+
+    // 14.6 Red Zone completion via /api/red/complete
+    const redCompleteRes = await fetch(`${baseUrl}/api/red/complete`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Origin': 'https://red-five-liart.vercel.app'
+      },
+      body: JSON.stringify({ teamId: 'TECHTEAM10328' })
+    });
+    assert(redCompleteRes.status === 200, 'POST /api/red/complete returns 200 OK');
+    const redCompleteJson = await redCompleteRes.json();
+    assert(redCompleteJson.ok === true, 'Red completion acknowledged');
+    const purpleZoneState = redCompleteJson.bootstrap?.zones?.find(z => z.id === 'purple');
+    assert(purpleZoneState?.unlocked === true, 'Purple Zone unlocked following Red Zone completion');
+
   } catch (err) {
     console.error('Test Suite Exception:', err);
     testFailed++;

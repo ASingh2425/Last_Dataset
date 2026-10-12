@@ -10,7 +10,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "test": "node --test",
+    "test": "node --test tests/hub.test.js tests/store.test.js tests/test-supabase-integration.js",
     "dev:solve": "node scripts/dev-solve.js",
     "reset:data": "node scripts/reset-data.js",
     "vercel:dev": "npx vercel dev"

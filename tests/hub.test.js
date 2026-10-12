@@ -13,6 +13,36 @@ async function withServer(t, configMode = 'open') {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'tld-hub-test-'));
   fs.cpSync(path.join(ROOT, 'config'), path.join(dir, 'config'), { recursive: true });
   fs.mkdirSync(path.join(dir, 'public'), { recursive: true });
+  const mockZones = {
+    zones: [
+      { id: 'yellow', name: 'YELLOW ZONE', color: '#f5c518', order: 1, tagline: 'INDUSTRIAL', terrain: '', position: { x: 29, y: 27 }, ctfs: [
+        { id: 'yellow-01', title: 'T1', briefing: '', url: '/mock/ctf/yellow-01', completion: { method: 'hmac-sha256', secretEnv: 'CTF_SECRET_YELLOW_03' } },
+        { id: 'yellow-02', title: 'T2', briefing: '', url: '/mock/ctf/yellow-02', completion: { method: 'hmac-sha256', secretEnv: 'CTF_SECRET_YELLOW_03' } },
+        { id: 'yellow-03', title: 'T3', briefing: '', url: '/mock/ctf/yellow-03', completion: { method: 'hmac-sha256', secretEnv: 'CTF_SECRET_YELLOW_03' } }
+      ]},
+      { id: 'blue', name: 'BLUE ZONE', color: '#56c8ff', order: 2, tagline: 'SERVERS', terrain: '', position: { x: 73, y: 24 }, ctfs: [
+        { id: 'blue-01', title: 'B1', briefing: '', url: '/mock/ctf/blue-01', completion: { method: 'hmac-sha256', secretEnv: 'CTF_SECRET_YELLOW_03' } },
+        { id: 'blue-02', title: 'B2', briefing: '', url: '/mock/ctf/blue-02', completion: { method: 'hmac-sha256', secretEnv: 'CTF_SECRET_YELLOW_03' } },
+        { id: 'blue-03', title: 'B3', briefing: '', url: '/mock/ctf/blue-03', completion: { method: 'hmac-sha256', secretEnv: 'CTF_SECRET_YELLOW_03' } }
+      ]},
+      { id: 'orange', name: 'ORANGE ZONE', color: '#ff8b3d', order: 3, tagline: 'REFINERY', terrain: '', position: { x: 77, y: 68 }, ctfs: [
+        { id: 'orange-01', title: 'O1', briefing: '', url: '/mock/ctf/orange-01', completion: { method: 'hmac-sha256', secretEnv: 'CTF_SECRET_YELLOW_03' } },
+        { id: 'orange-02', title: 'O2', briefing: '', url: '/mock/ctf/orange-02', completion: { method: 'hmac-sha256', secretEnv: 'CTF_SECRET_YELLOW_03' } },
+        { id: 'orange-03', title: 'O3', briefing: '', url: '/mock/ctf/orange-03', completion: { method: 'hmac-sha256', secretEnv: 'CTF_SECRET_YELLOW_03' } }
+      ]},
+      { id: 'red', name: 'RED ZONE', color: '#ff4058', order: 4, tagline: 'INFECTION', terrain: '', position: { x: 26, y: 70 }, ctfs: [
+        { id: 'red-01', title: 'R1', briefing: '', url: '/mock/ctf/red-01', completion: { method: 'hmac-sha256', secretEnv: 'CTF_SECRET_YELLOW_03' } },
+        { id: 'red-02', title: 'R2', briefing: '', url: '/mock/ctf/red-02', completion: { method: 'hmac-sha256', secretEnv: 'CTF_SECRET_YELLOW_03' } },
+        { id: 'red-03', title: 'R3', briefing: '', url: '/mock/ctf/red-03', completion: { method: 'hmac-sha256', secretEnv: 'CTF_SECRET_YELLOW_03' } }
+      ]},
+      { id: 'purple', name: 'PURPLE ZONE', color: '#bc8cff', order: 5, tagline: 'CORE', terrain: '', position: { x: 51, y: 10 }, ctfs: [
+        { id: 'purple-01', title: 'P1', briefing: '', url: '/purple', completion: { method: 'hmac-sha256', secretEnv: 'CTF_SECRET_YELLOW_03' } },
+        { id: 'purple-02', title: 'P2', briefing: '', url: '/purple', completion: { method: 'hmac-sha256', secretEnv: 'CTF_SECRET_YELLOW_03' } },
+        { id: 'purple-03', title: 'P3', briefing: '', url: '/purple', completion: { method: 'hmac-sha256', secretEnv: 'CTF_SECRET_YELLOW_03' } }
+      ]}
+    ]
+  };
+  fs.writeFileSync(path.join(dir, 'config', 'zones.json'), JSON.stringify(mockZones, null, 2));
   const teamsFile = path.join(dir, 'config', 'teams.json');
   const teams = JSON.parse(fs.readFileSync(teamsFile, 'utf8'));
   teams.mode = configMode;
@@ -33,7 +63,7 @@ async function withServer(t, configMode = 'open') {
     const payload = contentType.includes('application/json') ? await response.json() : await response.text();
     return { response, payload, cookie: response.headers.get('set-cookie')?.split(';')[0] || cookie };
   }
-  return { server, baseUrl, req };
+  return { server, baseUrl, req, dir };
 }
 
 test('registration, team-name locking, locked-zone enforcement, and ordered unlock', async (t) => {
@@ -134,8 +164,8 @@ test('returning teams restore server-side progress under the original name', asy
 });
 
 test('all five zones clear in strict order and produce survivor-complete progress', async (t) => {
-  const { req } = await withServer(t);
-  const config = JSON.parse(fs.readFileSync(path.join(ROOT, 'config', 'zones.json'), 'utf8'));
+  const { req, dir } = await withServer(t);
+  const config = JSON.parse(fs.readFileSync(path.join(dir, 'config', 'zones.json'), 'utf8'));
   let result = await req('/api/register', { method: 'POST', body: { teamId: 'FULL-RUN-01', teamName: 'The Last Archive' } });
   const cookie = result.cookie;
   for (const zone of config.zones) {
