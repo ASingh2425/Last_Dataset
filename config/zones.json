@@ -92,14 +92,14 @@
       "tagline": "PRALAYA CORE · ML SURVIVAL EVALUATOR",
       "terrain": "Reality fractures at the centre of the collapse. Build your model to unlock the escape gate.",
       "position": { "x": 51, "y": 10 },
-      "url": "https://purplezone-frontend.vercel.app/",
+      "url": "/purple",
       "rewardDataset": null,
       "ctfs": [
         {
           "id": "purple-01",
           "title": "PRALAYA Core · ML Model Evaluation & Escape",
           "briefing": "Reconstruct test.csv from all 4 dataset fragments and evaluate predictions to escape.",
-          "url": "https://purplezone-frontend.vercel.app/",
+          "url": "/purple",
           "completion": { "method": "hmac-sha256", "secretEnv": "CTF_SECRET_PURPLE_01" }
         }
       ]
