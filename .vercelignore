@@ -8,3 +8,5 @@ tests/**
 artifacts/**
 playwright-report/**
 test-results/**
+server_data/private_answers.csv
+server_data/*private*

@@ -181,3 +181,52 @@ test('all five zones clear in strict order and produce survivor-complete progres
   assert.equal(result.payload.progress.complete, true);
   assert.ok(result.payload.zones.every((zone) => zone.state === 'cleared'));
 });
+
+test('ML reconcile endpoint requires authentication, valid evaluationId, and recovers submission state', async (t) => {
+  const { req } = await withServer(t);
+
+  // 1. Unauthenticated request to /api/ml/reconcile is rejected
+  let res = await req('/api/ml/reconcile', { method: 'POST', body: { evaluationId: 'some-eval-id' } });
+  assert.equal(res.response.status, 401);
+  assert.equal(res.payload.error, 'AUTH_REQUIRED');
+
+  // 2. Register team
+  let reg = await req('/api/register', { method: 'POST', body: { teamId: 'RECON-01', teamName: 'Reconciliation Squad' } });
+  assert.equal(reg.response.status, 200);
+  const cookie = reg.cookie;
+
+  // 3. Authenticated request with missing evaluationId returns 400
+  res = await req('/api/ml/reconcile', { method: 'POST', body: {}, cookie });
+  assert.equal(res.response.status, 400);
+  assert.equal(res.payload.error, 'MISSING_EVALUATION_ID');
+
+  // 4. Authenticated request with non-existent evaluationId returns 404
+  res = await req('/api/ml/reconcile', { method: 'POST', body: { evaluationId: 'non-existent-uuid' }, cookie });
+  assert.equal(res.response.status, 404);
+  assert.equal(res.payload.error, 'NOT_FOUND');
+
+  // 5. Submit valid predictions to create a submission record
+  const sampleCsv = fs.readFileSync(path.resolve(__dirname, 'fixtures', 'sample_predictions.csv'), 'utf8');
+  const evalRes = await req('/api/ml/evaluate', {
+    method: 'POST',
+    body: { csvContent: sampleCsv, rawFilename: 'reconcile_test.csv' },
+    cookie
+  });
+  assert.equal(evalRes.response.status, 200);
+  const evalId = evalRes.payload.evaluationId;
+  assert.ok(evalId, 'Evaluation ID returned on evaluation');
+
+  // 6. Reconcile the already evaluated submission returns 200 with idempotent state
+  const reconRes = await req('/api/ml/reconcile', {
+    method: 'POST',
+    body: { evaluationId: evalId },
+    cookie
+  });
+  assert.equal(reconRes.response.status, 200);
+  assert.equal(reconRes.payload.success, true);
+  assert.equal(reconRes.payload.reconciled, true);
+  assert.equal(reconRes.payload.evaluationId, evalId);
+  assert.equal(reconRes.payload.submissionsUsed, 1);
+  assert.equal(reconRes.payload.submissionsRemaining, 9);
+});
+

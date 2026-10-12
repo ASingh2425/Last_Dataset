@@ -177,7 +177,10 @@ async function runTests() {
 
     // 9. Test Purple Zone Server-Side ML Evaluator
     console.log('\n--- 9. Testing Purple Zone Server-Side ML Evaluator ---');
-    const samplePreds = fs.readFileSync('c:/Users/Anvesha/OneDrive/Desktop/LAST DATASET/survival_predictions_catboost_elasticnet.csv', 'utf8');
+    const samplePredsPath = path.join(__dirname, 'fixtures', 'sample_predictions.csv');
+    const samplePreds = fs.existsSync(samplePredsPath)
+      ? fs.readFileSync(samplePredsPath, 'utf8')
+      : fs.readFileSync(path.resolve(__dirname, '..', 'tests', 'fixtures', 'sample_predictions.csv'), 'utf8');
 
     const evalRes = await fetch(`${baseUrl}/api/ml/evaluate`, {
       method: 'POST',
@@ -190,7 +193,13 @@ async function runTests() {
     assert(evalJson.qualifiesForEscape === false, '0.7754 does not unlock escape gate (< 0.80)');
 
     // Test with perfect answer key
-    const perfectKey = fs.readFileSync('server_data/private_answers.csv', 'utf8');
+    const privateKeyPath = path.resolve(__dirname, '..', 'server_data', 'private_answers.csv');
+    let perfectKey = '';
+    if (fs.existsSync(privateKeyPath)) {
+      perfectKey = fs.readFileSync(privateKeyPath, 'utf8');
+    } else if (process.env.PRIVATE_ANSWERS_BASE64) {
+      perfectKey = Buffer.from(process.env.PRIVATE_ANSWERS_BASE64, 'base64').toString('utf8');
+    }
     const perfectRes = await fetch(`${baseUrl}/api/ml/evaluate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Cookie: sessionCookie },
