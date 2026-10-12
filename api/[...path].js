@@ -1,6 +1,5 @@
 const fs = require('node:fs');
 const path = require('node:path');
-const { createHubServer } = require('../lib/hub');
 
 function getBaseDir() {
   const candidates = [
@@ -22,6 +21,7 @@ let hubServer;
 function getHubServer() {
   if (!hubServer) {
     try {
+      const { createHubServer } = require('../lib/hub');
       const baseDir = getBaseDir();
       hubServer = createHubServer({ baseDir });
     } catch (err) {
