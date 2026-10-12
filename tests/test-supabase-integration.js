@@ -13,8 +13,17 @@ async function runTests() {
   const baseUrl = 'http://127.0.0.1:4199';
   console.log(`Test server running at ${baseUrl}`);
 
+  if (process.env.NODE_ENV === 'production' && process.env.ALLOW_INTEGRATION_TEST_IN_PROD !== 'true') {
+    console.error('REFUSING to run destructive integration test in production environment without ALLOW_INTEGRATION_TEST_IN_PROD=true');
+    process.exit(1);
+  }
+
   // Test state isolation: Clean up previous test run data for TECHTEAM10328
   const { supabase } = require('../lib/supabaseClient');
+  if (!supabase) {
+    console.error('Supabase client is not configured. Skipping integration tests.');
+    return;
+  }
   await supabase.from('score_ledger').delete().eq('team_id', 'TECHTEAM10328');
   await supabase.from('dataset_entitlements').delete().eq('team_id', 'TECHTEAM10328');
   await supabase.from('ml_submissions').delete().eq('team_id', 'TECHTEAM10328');
@@ -192,13 +201,17 @@ async function runTests() {
     assert(evalJson.r2Score === 0.7754, `Calculated accurate R² score against hidden ground truth (R² = ${evalJson.r2Score})`);
     assert(evalJson.qualifiesForEscape === false, '0.7754 does not unlock escape gate (< 0.80)');
 
-    // Test with perfect answer key
-    const privateKeyPath = path.resolve(__dirname, '..', 'server_data', 'private_answers.csv');
+    const privateKeyPath = process.env.GROUND_TRUTH_PATH || process.env.PRIVATE_ANSWERS_PATH || path.resolve(__dirname, '..', 'server_data', 'private_answers.csv');
     let perfectKey = '';
     if (fs.existsSync(privateKeyPath)) {
       perfectKey = fs.readFileSync(privateKeyPath, 'utf8');
     } else if (process.env.PRIVATE_ANSWERS_BASE64) {
       perfectKey = Buffer.from(process.env.PRIVATE_ANSWERS_BASE64, 'base64').toString('utf8');
+    } else {
+      const fixturePath = path.resolve(__dirname, 'fixtures', 'sample_predictions.csv');
+      if (fs.existsSync(fixturePath)) {
+        perfectKey = fs.readFileSync(fixturePath, 'utf8');
+      }
     }
     const perfectRes = await fetch(`${baseUrl}/api/ml/evaluate`, {
       method: 'POST',

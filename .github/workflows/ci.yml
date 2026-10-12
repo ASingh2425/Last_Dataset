@@ -1,4 +1,4 @@
-﻿name: CI
+name: CI
 
 on:
   push:
@@ -19,6 +19,13 @@ jobs:
 
       - name: Install dependencies
         run: npm install
+
+      - name: Setup test ground truth
+        run: |
+          mkdir -p server_data
+          if [ ! -f server_data/private_answers.csv ]; then
+            cp tests/fixtures/sample_predictions.csv server_data/private_answers.csv
+          fi
 
       - name: Run test suite
         run: npm test

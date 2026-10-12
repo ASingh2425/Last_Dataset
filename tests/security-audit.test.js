@@ -1,3 +1,4 @@
+process.env.NODE_ENV = 'test';
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -22,9 +23,13 @@ function getSampleCsv(multiplier = 0.5) {
 }
 
 function getPerfectCsv() {
-  const answersPath = path.join(ROOT, 'server_data', 'private_answers.csv');
+  const answersPath = process.env.GROUND_TRUTH_PATH || process.env.PRIVATE_ANSWERS_PATH || path.join(ROOT, 'server_data', 'private_answers.csv');
   if (fs.existsSync(answersPath)) {
     return fs.readFileSync(answersPath, 'utf8');
+  }
+  const fixturePath = path.join(ROOT, 'tests', 'fixtures', 'sample_predictions.csv');
+  if (fs.existsSync(fixturePath)) {
+    return fs.readFileSync(fixturePath, 'utf8');
   }
   return getSampleCsv(0.85);
 }
