@@ -2,18 +2,8 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
     {
-      "source": "/api/ping",
-      "destination": "/api/ping.js"
-    },
-    {
-      "source": "/api/(.*)",
-      "destination": "/api/index.js"
+      "source": "/(.*)",
+      "destination": "/server.js"
     }
-  ],
-  "functions": {
-    "api/index.js": {
-      "maxDuration": 30,
-      "includeFiles": "server_data/**"
-    }
-  }
+  ]
 }
