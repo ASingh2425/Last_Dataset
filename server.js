@@ -21,6 +21,18 @@ function getHubServer() {
 }
 
 const handler = (req, res) => {
+  let targetUrl = req.headers['x-matched-path'] || req.headers['x-vercel-matched-path'] || req.headers['x-rewrite-url'] || req.headers['x-forwarded-uri'];
+  if (!targetUrl && req.url) {
+    try {
+      const parsed = new URL(req.url, 'http://localhost');
+      if (parsed.searchParams.has('_path')) {
+        targetUrl = parsed.searchParams.get('_path');
+      }
+    } catch (_) {}
+  }
+  if (targetUrl) {
+    req.url = targetUrl;
+  }
   return getHubServer().handler(req, res);
 };
 
