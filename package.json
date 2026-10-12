@@ -5,7 +5,7 @@
   "description": "Cinematic survival-game hub with server-enforced progression and durable serverless storage support",
   "type": "commonjs",
   "engines": {
-    "node": ">=20.0.0"
+    "node": "22.x"
   },
   "scripts": {
     "start": "node server.js",
