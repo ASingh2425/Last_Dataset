@@ -603,3 +603,39 @@ test('Security Audit 12: Production evaluator strictly fails closed without fixt
   }
 });
 
+test('Security Audit 13: CORS allowlist strictly rejects unapproved origins including spoofed Vercel hostnames', async (t) => {
+  const { baseUrl } = await withAuditServer(t);
+
+  const unapprovedOrigins = [
+    'https://attacker-yellow.vercel.app',
+    'https://evil-manu.vercel.app',
+    'https://yellow-attacker.vercel.app',
+    'https://phishing.com',
+    'https://random.vercel.app'
+  ];
+
+  for (const origin of unapprovedOrigins) {
+    const res = await fetch(`${baseUrl}/api/health`, {
+      headers: { Origin: origin }
+    });
+    assert.equal(res.headers.get('access-control-allow-origin'), null, `Must not send CORS allow header to ${origin}`);
+
+    // State-changing requests must be strictly rejected with 403 ORIGIN_REJECTED
+    const postRes = await fetch(`${baseUrl}/api/zone/complete`, {
+      method: 'POST',
+      headers: { Origin: origin, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ zoneId: 'yellow' })
+    });
+    assert.equal(postRes.status, 403, `Must reject state-changing request from ${origin} with 403`);
+    const json = await postRes.json();
+    assert.equal(json.error, 'ORIGIN_REJECTED');
+  }
+
+  // Approved origin receives CORS headers and is allowed
+  const approvedRes = await fetch(`${baseUrl}/api/health`, {
+    headers: { Origin: 'https://purplezone-frontend.vercel.app' }
+  });
+  assert.equal(approvedRes.headers.get('access-control-allow-origin'), 'https://purplezone-frontend.vercel.app');
+  assert.equal(approvedRes.headers.get('access-control-allow-credentials'), 'true');
+});
+

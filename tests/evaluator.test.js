@@ -111,3 +111,26 @@ test('Evaluator: parses scientific exponent notation correctly', () => {
   const res = evaluateSubmission(expCsv);
   assert.equal(res.valid, true);
 });
+
+test('Evaluator: handles null, undefined, and non-string inputs without throwing', () => {
+  for (const badInput of [null, undefined, 123, {}, [], true, false]) {
+    const res = evaluateSubmission(badInput);
+    assert.equal(res.valid, false);
+    assert.equal(res.error, 'Empty or missing submission file.');
+  }
+});
+
+test('Evaluator: rejects malformed CSV with unmatched quotes', () => {
+  const lines = getBaseCsv().split(/\r?\n/);
+  lines[1] = '"SANC-0091,0.5000'; // Unmatched opening quote
+  const res = evaluateSubmission(lines.join('\n'));
+  assert.equal(res.valid, false);
+  assert.match(res.error, /unmatched quote/);
+
+  lines[0] = '"Sanctuary_ID,Survival_Probability'; // Unmatched in header
+  lines[1] = 'SANC-0091,0.5000';
+  const resHeader = evaluateSubmission(lines.join('\n'));
+  assert.equal(resHeader.valid, false);
+  assert.match(resHeader.error, /unmatched quote/);
+});
+
