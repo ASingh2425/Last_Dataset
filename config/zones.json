@@ -8,7 +8,7 @@
       "tagline": "INDUSTRIAL QUARANTINE",
       "terrain": "The assembly yards still hum beneath the dead power grid.",
       "position": { "x": 29, "y": 27 },
-      "url": "https://yellowzone-xi.vercel.app",
+      "url": "https://yellow-zone-neon.vercel.app",
       "transitionSlideshow": "https://yellow-to-blue-slideshow.vercel.app/",
       "rewardDataset": "community_final",
       "ctfs": [
@@ -16,7 +16,7 @@
           "id": "yellow-01",
           "title": "Industrial Quarantine Investigation",
           "briefing": "Recover the Community dataset fragment.",
-          "url": "https://yellowzone-xi.vercel.app",
+          "url": "https://yellow-zone-neon.vercel.app",
           "completion": { "method": "hmac-sha256", "secretEnv": "CTF_SECRET_YELLOW_01" }
         }
       ]

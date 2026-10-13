@@ -206,7 +206,7 @@
     }, 2800);
   }
   const ZONE_URLS = {
-    yellow: (typeof window !== 'undefined' && (window.TLD_YELLOW_ZONE_URL || localStorage.getItem('tld_yellow_zone_url'))) || 'https://yellowzone-xi.vercel.app',
+    yellow: (typeof window !== 'undefined' && (window.TLD_YELLOW_ZONE_URL || localStorage.getItem('tld_yellow_zone_url'))) || 'https://yellow-zone-neon.vercel.app',
     blue: 'https://bluezone-xi.vercel.app/',
     orange: 'https://or-light-gamma.vercel.app/',
     red: 'https://red-five-liart.vercel.app/',
