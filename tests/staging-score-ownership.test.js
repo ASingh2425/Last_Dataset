@@ -33,7 +33,7 @@ if (fs.existsSync(envFile)) {
   }
 }
 const { supabase } = require('../lib/supabaseClient');
-const supabaseStore = require('../lib/supabaseStore');
+const { supabaseStore } = require('../lib/supabaseStore');
 
 test('Staging Acceptance: Score Ledger Ownership, Permission Boundaries & 3,100-Point Audit', async (t) => {
   if (!supabase) {
@@ -123,18 +123,46 @@ test('Staging Acceptance: Score Ledger Ownership, Permission Boundaries & 3,100-
     assert.equal(sanc.ok, true);
 
     // 2. Yellow (200 pts)
+    await supabaseStore.completeChallenge({
+      teamId,
+      delegateId: member2Id,
+      zoneId: 'yellow',
+      challengeId: 'yellow-01',
+      allZoneChallenges: ['yellow-01']
+    });
     const yellow = await supabaseStore.completeZoneDirect({ teamId, delegateId: member2Id, zoneId: 'yellow' });
     assert.equal(yellow.ok, true);
 
     // 3. Blue (400 pts)
+    await supabaseStore.completeChallenge({
+      teamId,
+      delegateId: leaderId,
+      zoneId: 'blue',
+      challengeId: 'blue-01',
+      allZoneChallenges: ['blue-01']
+    });
     const blue = await supabaseStore.completeZoneDirect({ teamId, delegateId: leaderId, zoneId: 'blue' });
     assert.equal(blue.ok, true);
 
     // 4. Orange (600 pts)
+    await supabaseStore.completeChallenge({
+      teamId,
+      delegateId: member2Id,
+      zoneId: 'orange',
+      challengeId: 'orange-01',
+      allZoneChallenges: ['orange-01']
+    });
     const orange = await supabaseStore.completeZoneDirect({ teamId, delegateId: member2Id, zoneId: 'orange' });
     assert.equal(orange.ok, true);
 
     // 5. Red (800 pts)
+    await supabaseStore.completeChallenge({
+      teamId,
+      delegateId: leaderId,
+      zoneId: 'red',
+      challengeId: 'red-01',
+      allZoneChallenges: ['red-01']
+    });
     const red = await supabaseStore.completeZoneDirect({ teamId, delegateId: leaderId, zoneId: 'red' });
     assert.equal(red.ok, true);
 

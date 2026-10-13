@@ -22,7 +22,10 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { createHubServer } = require('../lib/hub');
 const { supabase } = require('../lib/supabaseClient');
-const { hashPasscode } = require('../lib/security');
+
+function hashPassword(passcode) {
+  return crypto.createHash('sha256').update(String(passcode).trim(), 'utf8').digest('hex');
+}
 
 const ROOT = path.resolve(__dirname, '..');
 const SESSION_SECRET = 'staging-duo-supabase-secret-key-min-32-chars';
@@ -75,13 +78,13 @@ test('Two-Player Synchronized Supabase E2E: Sessions, Concurrency, 3,100 Pts & P
   }
 
   const runId = crypto.randomBytes(4).toString('hex');
-  const teamId = `DUO_STAGE_${runId.toUpperCase()}`;
+  const teamId = `DUO-STAGE-${runId.toUpperCase()}`;
   const teamName = `Synchronized Duo ${runId}`;
-  const p1Delegate = `P1_${runId}`;
-  const p2Delegate = `P2_${runId}`;
-  const p3Delegate = `P3_${runId}`;
+  const p1Delegate = `P1-${runId}`;
+  const p2Delegate = `P2-${runId}`;
+  const p3Delegate = `P3-${runId}`;
   const rawPasscode = 'StagingDuo2026!';
-  const hashedPasscode = hashPasscode(rawPasscode);
+  const hashedPasscode = hashPassword(rawPasscode);
 
   console.log(`\nSetting up disposable Supabase duo team: ${teamId}`);
 
@@ -165,6 +168,13 @@ test('Two-Player Synchronized Supabase E2E: Sessions, Concurrency, 3,100 Pts & P
     assert.equal(bootAfterSanc.zones.find(z => z.id === 'yellow')?.unlocked, true, 'Yellow must unlock for Player 2');
 
     // 6. Player 2 completes Yellow (200 pts)
+    const ySolve = await fetch(`${baseUrl}/api/dev/solve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Cookie: cookie2 },
+      body: JSON.stringify({ ctfId: 'yellow-01' })
+    });
+    assert.equal(ySolve.status, 200, 'Yellow CTF solve must succeed');
+
     const yellowRes = await fetch(`${baseUrl}/api/zone/complete`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Cookie: cookie2 },
@@ -177,6 +187,13 @@ test('Two-Player Synchronized Supabase E2E: Sessions, Concurrency, 3,100 Pts & P
     assert.equal(ds1Res.status, 200, 'Player 1 can download entitled community_final');
 
     // 8. Player 1 completes Blue (400 pts)
+    const bSolve = await fetch(`${baseUrl}/api/dev/solve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Cookie: cookie1 },
+      body: JSON.stringify({ ctfId: 'blue-01' })
+    });
+    assert.equal(bSolve.status, 200, 'Blue CTF solve must succeed');
+
     const blueRes = await fetch(`${baseUrl}/api/zone/complete`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Cookie: cookie1 },
@@ -185,6 +202,13 @@ test('Two-Player Synchronized Supabase E2E: Sessions, Concurrency, 3,100 Pts & P
     assert.equal(blueRes.status, 200, 'Blue completion must succeed');
 
     // 9. Player 2 completes Orange (600 pts)
+    const oSolve = await fetch(`${baseUrl}/api/dev/solve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Cookie: cookie2 },
+      body: JSON.stringify({ ctfId: 'orange-01' })
+    });
+    assert.equal(oSolve.status, 200, 'Orange CTF solve must succeed');
+
     const orangeRes = await fetch(`${baseUrl}/api/zone/complete`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Cookie: cookie2 },
@@ -193,6 +217,13 @@ test('Two-Player Synchronized Supabase E2E: Sessions, Concurrency, 3,100 Pts & P
     assert.equal(orangeRes.status, 200, 'Orange completion must succeed');
 
     // 10. Player 1 completes Red (800 pts)
+    const rSolve = await fetch(`${baseUrl}/api/dev/solve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Cookie: cookie1 },
+      body: JSON.stringify({ ctfId: 'red-01' })
+    });
+    assert.equal(rSolve.status, 200, 'Red CTF solve must succeed');
+
     const redRes = await fetch(`${baseUrl}/api/zone/complete`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Cookie: cookie1 },
@@ -273,6 +304,9 @@ test('Two-Player Synchronized Supabase E2E: Sessions, Concurrency, 3,100 Pts & P
     console.log(`  [PASS] Two-Player Synchronized Supabase E2E complete: strictly 3,100 points!`);
 
   } finally {
+    if (typeof server.closeAllConnections === 'function') {
+      server.closeAllConnections();
+    }
     await new Promise((resolve) => server.close(resolve));
     console.log(`Tearing down disposable duo team ${teamId}...`);
     try {
