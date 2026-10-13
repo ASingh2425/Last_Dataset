@@ -10,7 +10,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "test": "node --test tests/hub.test.js tests/store.test.js tests/security-audit.test.js tests/two-player-e2e.test.js tests/admin.test.js",
+    "test": "node --test tests/evaluator.test.js tests/hub.test.js tests/store.test.js tests/security-audit.test.js tests/two-player-e2e.test.js tests/admin.test.js",
     "test:integration": "node tests/test-supabase-integration.js",
     "test:staging:ownership": "node --test tests/staging-score-ownership.test.js",
     "test:staging:e2e": "node --test tests/two-player-supabase-e2e.test.js",
