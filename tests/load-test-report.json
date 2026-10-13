@@ -1,0 +1,28 @@
+{
+  "timestamp": "2026-10-13T01:21:13.864Z",
+  "config": {
+    "teams": 400,
+    "participants": 800,
+    "concurrency": 40,
+    "useSupabase": false,
+    "productionRateLimits": false
+  },
+  "results": {
+    "totalRequests": 7339,
+    "durationSeconds": 167.31,
+    "throughputReqSec": 44,
+    "errorCount": 0,
+    "latencies": {
+      "min": 18,
+      "avg": 912,
+      "p50": 830,
+      "p90": 1478,
+      "p95": 1681,
+      "p99": 2556,
+      "max": 4159
+    },
+    "leaderboardQualifiedTeams": 400,
+    "allTeamsAtCanonical3100": true,
+    "passed": true
+  }
+}

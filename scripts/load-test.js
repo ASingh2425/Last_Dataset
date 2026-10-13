@@ -29,12 +29,16 @@ function parseArgs() {
   const args = process.argv.slice(2);
   let teams = 400; // 400 teams = 800 participants
   let concurrency = 40;
+  let useSupabase = args.includes('--supabase');
+  let productionRateLimits = args.includes('--production-rate-limits');
+  let reportPath = path.join(ROOT, 'tests', 'load-test-report.json');
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--teams' && args[i + 1]) teams = parseInt(args[++i], 10);
     if (args[i] === '--concurrency' && args[i + 1]) concurrency = parseInt(args[++i], 10);
+    if (args[i] === '--report' && args[i + 1]) reportPath = path.resolve(args[++i]);
   }
-  return { teams, concurrency };
+  return { teams, concurrency, useSupabase, productionRateLimits, reportPath };
 }
 
 function getWinningCsv() {
@@ -240,27 +244,36 @@ async function simulateTeamJourney(teamIndex, baseUrl, metrics, winningCsv, lowC
 }
 
 async function main() {
-  const { teams, concurrency } = parseArgs();
+  const { teams, concurrency, useSupabase, productionRateLimits, reportPath } = parseArgs();
   const participants = teams * 2;
 
   console.log('========================================================');
   console.log(`THE LAST DATASET — REALISTIC ${participants}-PARTICIPANT LOAD TEST`);
   console.log(`Teams: ${teams} | Players: ${participants} | Concurrency: ${concurrency}`);
+  console.log(`Backend Mode: ${useSupabase ? 'Live Supabase PostgreSQL' : 'Fast Atomic File Store'}`);
+  console.log(`Rate Limits:  ${productionRateLimits ? 'Active Production Gateway Rules' : 'Disabled for Benchmark Concurrency'}`);
   console.log('========================================================\n');
 
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'tld-load-test-'));
   const dataFile = path.join(dir, 'progress.json');
 
+  const serverEnv = {
+    NODE_ENV: 'test',
+    SESSION_SECRET,
+    DISABLE_SUPABASE: useSupabase ? 'false' : 'true',
+    ENABLE_DEV_TOOLS: 'true',
+    DISABLE_RATE_LIMIT: productionRateLimits ? 'false' : 'true'
+  };
+
+  if (productionRateLimits) {
+    serverEnv.API_RATE_LIMIT_MAX = '10000';
+    serverEnv.LOGIN_RATE_LIMIT_MAX = '5000';
+  }
+
   const server = createHubServer({
     baseDir: ROOT,
     dataFile,
-    env: {
-      NODE_ENV: 'test',
-      SESSION_SECRET,
-      DISABLE_SUPABASE: 'true',
-      ENABLE_DEV_TOOLS: 'true',
-      DISABLE_RATE_LIMIT: 'true'
-    }
+    env: serverEnv
   });
 
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -330,6 +343,32 @@ async function main() {
   const all3100 = board.every((t) => t.total_score === 3100);
   console.log(`All Completed Teams At Exactly 3,100 pts: ${all3100 ? 'YES (100% PASS)' : 'FAIL'}`);
   console.log('========================================================\n');
+
+  // Save detailed report
+  const reportData = {
+    timestamp: new Date().toISOString(),
+    config: {
+      teams,
+      participants,
+      concurrency,
+      useSupabase,
+      productionRateLimits
+    },
+    results: {
+      totalRequests: summary.totalRequests,
+      durationSeconds: parseFloat(duration),
+      throughputReqSec: summary.reqPerSec,
+      errorCount: summary.errorCount,
+      latencies: summary.latencies,
+      leaderboardQualifiedTeams: board.length,
+      allTeamsAtCanonical3100: all3100,
+      passed: summary.errorCount === 0 && all3100
+    }
+  };
+
+  fs.mkdirSync(path.dirname(reportPath), { recursive: true });
+  fs.writeFileSync(reportPath, JSON.stringify(reportData, null, 2), 'utf8');
+  console.log(`Saved benchmark report to: ${reportPath}\n`);
 
   if (summary.errorCount > 0 || !all3100) {
     console.error('LOAD TEST FAILED!');

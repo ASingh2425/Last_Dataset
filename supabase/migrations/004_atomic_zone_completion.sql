@@ -30,7 +30,7 @@ DECLARE
     v_clean_team_id TEXT;
     v_now TIMESTAMPTZ := NOW();
     v_prev_status TEXT;
-    v_solved_challenges JSONB;
+    v_solved_challenges TEXT[];
     v_req_challenge TEXT;
     v_has_qual BOOLEAN := FALSE;
     v_already_completed BOOLEAN := FALSE;
@@ -67,7 +67,7 @@ BEGIN
         WHERE team_id = v_clean_team_id AND zone_id = p_zone_id;
 
         FOREACH v_req_challenge IN ARRAY p_required_challenges LOOP
-            IF v_solved_challenges IS NULL OR NOT (v_solved_challenges ? v_req_challenge) THEN
+            IF v_solved_challenges IS NULL OR NOT (v_req_challenge = ANY(v_solved_challenges)) THEN
                 RAISE EXCEPTION 'CHALLENGES_INCOMPLETE: Sector "%" requires challenge "%" to be solved before clearance.', p_zone_id, v_req_challenge;
             END IF;
         END LOOP;
