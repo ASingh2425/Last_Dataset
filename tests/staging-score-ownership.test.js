@@ -133,25 +133,29 @@ test('Staging Acceptance: Score Ledger Ownership, Permission Boundaries & 3,100-
     const yellow = await supabaseStore.completeZoneDirect({ teamId, delegateId: member2Id, zoneId: 'yellow' });
     assert.equal(yellow.ok, true);
 
-    // 3. Blue (400 pts)
-    await supabaseStore.completeChallenge({
-      teamId,
-      delegateId: leaderId,
-      zoneId: 'blue',
-      challengeId: 'blue-01',
-      allZoneChallenges: ['blue-01']
-    });
+    const blueChallenges = ['blue-zone-ctf-01', 'blue-zone-ctf-02', 'blue-zone-ctf-03', 'blue-zone-ctf-04'];
+    for (const challengeId of blueChallenges) {
+      await supabaseStore.completeChallenge({
+        teamId,
+        delegateId: leaderId,
+        zoneId: 'blue',
+        challengeId,
+        allZoneChallenges: blueChallenges
+      });
+    }
     const blue = await supabaseStore.completeZoneDirect({ teamId, delegateId: leaderId, zoneId: 'blue' });
     assert.equal(blue.ok, true);
 
-    // 4. Orange (600 pts)
-    await supabaseStore.completeChallenge({
-      teamId,
-      delegateId: member2Id,
-      zoneId: 'orange',
-      challengeId: 'orange-01',
-      allZoneChallenges: ['orange-01']
-    });
+    const orangeChallenges = ['building-1', 'building-2', 'building-3', 'building-4'];
+    for (const challengeId of orangeChallenges) {
+      await supabaseStore.completeChallenge({
+        teamId,
+        delegateId: member2Id,
+        zoneId: 'orange',
+        challengeId,
+        allZoneChallenges: orangeChallenges
+      });
+    }
     const orange = await supabaseStore.completeZoneDirect({ teamId, delegateId: member2Id, zoneId: 'orange' });
     assert.equal(orange.ok, true);
 

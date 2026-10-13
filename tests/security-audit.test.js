@@ -280,18 +280,21 @@ test('Security Audit 6: Purple zone completion without qualifying R2 >= 0.80 ML 
   assert.equal(yellowIncompleteJson.error, 'CHALLENGES_INCOMPLETE');
 
   // Solve each zone's required challenge and clear the sector legitimately
-  for (const [zone, ctfId] of [
-    ['yellow', 'yellow-01'],
-    ['blue', 'blue-01'],
-    ['orange', 'orange-01'],
-    ['red', 'red-01']
-  ]) {
-    const solveRes = await fetch(`${baseUrl}/api/dev/solve`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Cookie: cookie },
-      body: JSON.stringify({ ctfId })
-    });
-    assert.equal(solveRes.status, 200, `Solving ${ctfId} must succeed`);
+  const solvePlan = [
+    ['yellow', ['yellow-01']],
+    ['blue', ['blue-zone-ctf-01', 'blue-zone-ctf-02', 'blue-zone-ctf-03', 'blue-zone-ctf-04']],
+    ['orange', ['building-1', 'building-2', 'building-3', 'building-4']],
+    ['red', ['red-01']]
+  ];
+  for (const [zone, ctfs] of solvePlan) {
+    for (const ctfId of ctfs) {
+      const solveRes = await fetch(`${baseUrl}/api/dev/solve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Cookie: cookie },
+        body: JSON.stringify({ ctfId })
+      });
+      assert.equal(solveRes.status, 200, `Solving ${ctfId} must succeed`);
+    }
 
     const clearRes = await fetch(`${baseUrl}/api/zone/complete`, {
       method: 'POST',
@@ -426,17 +429,20 @@ test('Security Audit 9: Canonical 3,100 points audit: total score matches exactl
   });
 
   // 2. Solve & Clear Yellow (200), Blue (400), Orange (600), Red (800)
-  for (const [zone, ctf] of [
-    ['yellow', 'yellow-01'],
-    ['blue', 'blue-01'],
-    ['orange', 'orange-01'],
-    ['red', 'red-01']
-  ]) {
-    await fetch(`${baseUrl}/api/dev/solve`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Cookie: cookie },
-      body: JSON.stringify({ ctfId: ctf })
-    });
+  const solvePlan = [
+    ['yellow', ['yellow-01']],
+    ['blue', ['blue-zone-ctf-01', 'blue-zone-ctf-02', 'blue-zone-ctf-03', 'blue-zone-ctf-04']],
+    ['orange', ['building-1', 'building-2', 'building-3', 'building-4']],
+    ['red', ['red-01']]
+  ];
+  for (const [zone, ctfs] of solvePlan) {
+    for (const ctfId of ctfs) {
+      await fetch(`${baseUrl}/api/dev/solve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Cookie: cookie },
+        body: JSON.stringify({ ctfId })
+      });
+    }
     await fetch(`${baseUrl}/api/zone/complete`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Cookie: cookie },
@@ -501,17 +507,20 @@ test('Security Audit 11: End-to-end qualifying ML submission -> permanent lock -
   });
 
   // 2. Solve & Clear Yellow (200), Blue (400), Orange (600), Red (800)
-  for (const [zone, ctf] of [
-    ['yellow', 'yellow-01'],
-    ['blue', 'blue-01'],
-    ['orange', 'orange-01'],
-    ['red', 'red-01']
-  ]) {
-    await fetch(`${baseUrl}/api/dev/solve`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Cookie: cookie },
-      body: JSON.stringify({ ctfId: ctf })
-    });
+  const solvePlan = [
+    ['yellow', ['yellow-01']],
+    ['blue', ['blue-zone-ctf-01', 'blue-zone-ctf-02', 'blue-zone-ctf-03', 'blue-zone-ctf-04']],
+    ['orange', ['building-1', 'building-2', 'building-3', 'building-4']],
+    ['red', ['red-01']]
+  ];
+  for (const [zone, ctfs] of solvePlan) {
+    for (const ctfId of ctfs) {
+      await fetch(`${baseUrl}/api/dev/solve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Cookie: cookie },
+        body: JSON.stringify({ ctfId })
+      });
+    }
     await fetch(`${baseUrl}/api/zone/complete`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Cookie: cookie },

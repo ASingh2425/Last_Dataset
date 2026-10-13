@@ -108,19 +108,21 @@ test('Two-Player Synchronized End-to-End Game Lifecycle: 3,100 pts & Permanent L
   // 5. Progression through Yellow (200), Blue (400), Orange (600), Red (800)
   // Players alternate solves to prove true multiplayer state synchronization
   const stages = [
-    { zone: 'yellow', ctf: 'yellow-01', playerCookie: cookie1, expectedScore: 300 }, // 100 + 200
-    { zone: 'blue', ctf: 'blue-01', playerCookie: cookie2, expectedScore: 700 },     // 300 + 400
-    { zone: 'orange', ctf: 'orange-01', playerCookie: cookie1, expectedScore: 1300 }, // 700 + 600
-    { zone: 'red', ctf: 'red-01', playerCookie: cookie2, expectedScore: 2100 }       // 1300 + 800
+    { zone: 'yellow', ctfs: ['yellow-01'], playerCookie: cookie1, expectedScore: 300 }, // 100 + 200
+    { zone: 'blue', ctfs: ['blue-zone-ctf-01', 'blue-zone-ctf-02', 'blue-zone-ctf-03', 'blue-zone-ctf-04'], playerCookie: cookie2, expectedScore: 700 },     // 300 + 400
+    { zone: 'orange', ctfs: ['building-1', 'building-2', 'building-3', 'building-4'], playerCookie: cookie1, expectedScore: 1300 }, // 700 + 600
+    { zone: 'red', ctfs: ['red-01'], playerCookie: cookie2, expectedScore: 2100 }       // 1300 + 800
   ];
 
   for (const stage of stages) {
-    const solveRes = await fetch(`${baseUrl}/api/dev/solve`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Cookie: stage.playerCookie },
-      body: JSON.stringify({ ctfId: stage.ctf })
-    });
-    assert.equal(solveRes.status, 200, `Solve ${stage.ctf} succeeds`);
+    for (const ctf of stage.ctfs) {
+      const solveRes = await fetch(`${baseUrl}/api/dev/solve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Cookie: stage.playerCookie },
+        body: JSON.stringify({ ctfId: ctf })
+      });
+      assert.equal(solveRes.status, 200, `Solve ${ctf} succeeds`);
+    }
 
     const clearRes = await fetch(`${baseUrl}/api/zone/complete`, {
       method: 'POST',

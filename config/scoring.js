@@ -49,8 +49,11 @@ const TOTAL_COMPETITION_POINTS = Object.values(CANONICAL_STAGE_SCORES)
 const ZONE_REQUIRED_CHALLENGES = {
   sanctuary: [],
   yellow: ['yellow-01'],
-  blue: ['blue-01'],
-  orange: ['orange-01'],
+  // Verified from devpeeyushh/bluezone/src/data/ctf/registry.ts
+  blue: ['blue-zone-ctf-01', 'blue-zone-ctf-02', 'blue-zone-ctf-03', 'blue-zone-ctf-04'],
+  // Verified from bihaninakul07-art/or_light/lib/challenges.ts
+  orange: ['building-1', 'building-2', 'building-3', 'building-4'],
+  // Provisional. Red's four mandatory terminal identifiers still need deployment verification.
   red: ['red-01'],
   purple: ['purple-01']
 };
