@@ -72,9 +72,9 @@ CREATE TABLE IF NOT EXISTS public.score_ledger (
     team_id TEXT NOT NULL REFERENCES public.teams(id) ON DELETE CASCADE,
     delegate_id TEXT,                         -- Identifies which of the 2 teammates completed the action
     points INTEGER NOT NULL,
-    source_type TEXT NOT NULL,                 -- 'ctf_complete', 'zone_clear', 'admin_override'
-    source_id TEXT NOT NULL,                   -- e.g. 'yellow-01', 'blue-03'
-    idempotency_key TEXT UNIQUE NOT NULL,      -- Prevents duplicate point awards (e.g. 'TECHTEAM10328:yellow-01')
+    source_type TEXT NOT NULL,                 -- 'zone_sanctuary_clear', 'zone_yellow_clear', etc.
+    source_id TEXT NOT NULL,                   -- e.g. 'sanctuary-gate', 'yellow-zone'
+    idempotency_key TEXT UNIQUE NOT NULL,      -- Prevents duplicate point awards (e.g. 'TECHTEAM10328:yellow-zone')
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -125,8 +125,8 @@ CREATE TABLE IF NOT EXISTS public.organizer_audit_log (
 -- -------------------------------------------------------------------------
 -- 9. ATOMIC STORED PROCEDURE: IDEMPOTENT CHALLENGE COMPLETION
 -- -------------------------------------------------------------------------
--- This guarantees that if Player 1 and Player 2 submit simultaneously,
--- points are awarded exactly once and zone unlock rules are enforced.
+-- Records challenge solves in zone_progress.solved_challenges.
+-- Note: Score ledger ownership belongs strictly to zone completion RPCs.
 CREATE OR REPLACE FUNCTION public.complete_challenge_idempotent(
     p_team_id TEXT,
     p_delegate_id TEXT,
@@ -140,75 +140,89 @@ CREATE OR REPLACE FUNCTION public.complete_challenge_idempotent(
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public, pg_temp
 AS $$
 DECLARE
-    v_idempotency_key TEXT;
+    v_clean_team_id TEXT;
     v_current_solved TEXT[];
     v_is_new_solve BOOLEAN := FALSE;
     v_zone_now_complete BOOLEAN := FALSE;
     v_total_score INTEGER;
+    v_team_exists BOOLEAN := FALSE;
 BEGIN
-    v_idempotency_key := p_team_id || ':' || p_challenge_id;
+    v_clean_team_id := UPPER(TRIM(p_team_id));
+    IF v_clean_team_id IS NULL OR v_clean_team_id = '' THEN
+        RAISE EXCEPTION 'Team ID is required';
+    END IF;
 
-    -- 1. Try to record score award with idempotency lock
-    BEGIN
-        INSERT INTO public.score_ledger (team_id, delegate_id, points, source_type, source_id, idempotency_key)
-        VALUES (p_team_id, p_delegate_id, p_points, 'ctf_complete', p_challenge_id, v_idempotency_key);
-        v_is_new_solve := TRUE;
-    EXCEPTION WHEN unique_violation THEN
-        v_is_new_solve := FALSE;
-    END;
+    -- Validate team existence and active status
+    SELECT EXISTS (
+        SELECT 1 FROM public.teams WHERE id = v_clean_team_id AND is_active = TRUE
+    ) INTO v_team_exists;
+    IF NOT v_team_exists THEN
+        RAISE EXCEPTION 'TEAM_NOT_FOUND: Team "%" does not exist or is inactive.', v_clean_team_id;
+    END IF;
 
-    -- 2. Update zone solved_challenges array
+    -- Transaction-level advisory lock on team challenge solve
+    PERFORM pg_advisory_xact_lock(hashtext('challenge_solve:' || v_clean_team_id));
+
+    -- 1. Fetch current solved challenges for this zone
     SELECT solved_challenges INTO v_current_solved
     FROM public.zone_progress
-    WHERE team_id = p_team_id AND zone_id = p_zone_id;
+    WHERE team_id = v_clean_team_id AND zone_id = p_zone_id;
 
     IF v_current_solved IS NULL THEN
         v_current_solved := ARRAY[p_challenge_id];
+        v_is_new_solve := TRUE;
         INSERT INTO public.zone_progress (team_id, zone_id, status, solved_challenges, unlocked_at)
-        VALUES (p_team_id, p_zone_id, 'in_progress', v_current_solved, NOW());
+        VALUES (v_clean_team_id, p_zone_id, 'in_progress', v_current_solved, NOW())
+        ON CONFLICT (team_id, zone_id) DO UPDATE
+        SET solved_challenges = v_current_solved,
+            updated_at = NOW();
     ELSE
         IF NOT (p_challenge_id = ANY(v_current_solved)) THEN
             v_current_solved := array_append(v_current_solved, p_challenge_id);
+            v_is_new_solve := TRUE;
             UPDATE public.zone_progress
             SET solved_challenges = v_current_solved,
-                status = 'in_progress',
                 updated_at = NOW()
-            WHERE team_id = p_team_id AND zone_id = p_zone_id;
+            WHERE team_id = v_clean_team_id AND zone_id = p_zone_id;
+        ELSE
+            v_is_new_solve := FALSE;
         END IF;
     END IF;
 
-    -- 3. Check if all challenges in this zone are solved
+    -- 2. Check if all challenges in this zone are solved
     IF p_all_zone_challenges <@ v_current_solved THEN
         v_zone_now_complete := TRUE;
         UPDATE public.zone_progress
         SET status = 'completed',
             completed_at = COALESCE(completed_at, NOW()),
             updated_at = NOW()
-        WHERE team_id = p_team_id AND zone_id = p_zone_id;
+        WHERE team_id = v_clean_team_id AND zone_id = p_zone_id;
 
         -- Unlock dataset entitlement if specified
         IF p_reward_dataset_key IS NOT NULL THEN
             INSERT INTO public.dataset_entitlements (team_id, dataset_key)
-            VALUES (p_team_id, p_reward_dataset_key)
+            VALUES (v_clean_team_id, p_reward_dataset_key)
             ON CONFLICT (team_id, dataset_key) DO NOTHING;
         END IF;
 
         -- Unlock next zone if specified
         IF p_next_zone_id IS NOT NULL THEN
             INSERT INTO public.zone_progress (team_id, zone_id, status, unlocked_at)
-            VALUES (p_team_id, p_next_zone_id, 'available', NOW())
+            VALUES (v_clean_team_id, p_next_zone_id, 'available', NOW())
             ON CONFLICT (team_id, zone_id) DO UPDATE
             SET status = CASE WHEN public.zone_progress.status = 'locked' THEN 'available' ELSE public.zone_progress.status END,
                 unlocked_at = COALESCE(public.zone_progress.unlocked_at, NOW());
         END IF;
     END IF;
 
-    -- 4. Calculate total team score
+    -- 3. Calculate total team score from authoritative score ledger
+    -- (Scoring ownership belongs strictly to zone completion RPCs)
     SELECT COALESCE(SUM(points), 0) INTO v_total_score
     FROM public.score_ledger
-    WHERE team_id = p_team_id;
+    WHERE team_id = v_clean_team_id;
 
     RETURN jsonb_build_object(
         'success', TRUE,
@@ -228,7 +242,7 @@ SELECT
     t.id AS team_id,
     t.team_name,
     COALESCE(SUM(l.points), 0) AS total_score,
-    COUNT(DISTINCT l.source_id) FILTER (WHERE l.source_type = 'ctf_complete') AS total_challenges_solved,
+    COUNT(DISTINCT l.source_id) AS total_challenges_solved,
     COALESCE(BOOL_OR(s.qualifies_for_escape), FALSE) AS escape_unlocked,
     MAX(s.r2_score) AS best_r2_score,
     MAX(l.created_at) AS last_score_at
@@ -240,9 +254,7 @@ GROUP BY t.id, t.team_name
 ORDER BY total_score DESC, best_r2_score DESC NULLS LAST, last_score_at ASC NULLS LAST;
 
 -- -------------------------------------------------------------------------
--- 11. SCHEMA INITIALIZATION COMPLETE
+-- 11. PRIVILEGE HARDENING & LEAST PRIVILEGE REVOCATIONS
 -- -------------------------------------------------------------------------
--- DDL schema complete. For local/staging development teams, run:
--- supabase/migrations/000_seed_dev_data.sql
--- For production participants, use scripts/import-techtatva-teams.js.
-
+REVOKE EXECUTE ON FUNCTION public.complete_challenge_idempotent(TEXT, TEXT, TEXT, TEXT, INTEGER, TEXT[], TEXT, TEXT) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.complete_challenge_idempotent(TEXT, TEXT, TEXT, TEXT, INTEGER, TEXT[], TEXT, TEXT) TO postgres, service_role;
