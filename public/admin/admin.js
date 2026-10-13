@@ -28,7 +28,8 @@
     },
     autoRefreshSec: 15,
     autoRefreshTimer: null,
-    isRefreshing: false
+    isRefreshing: false,
+    adminKey: (() => { try { return sessionStorage.getItem('tld_admin_key'); } catch (_) { return null; } })()
   };
 
   const CANONICAL_ZONES = [
@@ -157,10 +158,24 @@
     if (els.clockLocal) els.clockLocal.textContent = now.toTimeString().slice(0, 8);
   }
 
+  function getAuthHeaders() {
+    const headers = { 'Cache-Control': 'no-cache' };
+    const key = state.adminKey || (() => { try { return sessionStorage.getItem('tld_admin_key'); } catch (_) { return null; } })();
+    if (key) {
+      headers['x-admin-key'] = key;
+    }
+    return headers;
+  }
+
   // --- AUTHENTICATION ---
   async function checkAuthSession() {
+    hideAuthError();
     try {
-      const res = await fetch('/api/admin/session', { cache: 'no-store' });
+      const res = await fetch('/api/admin/session', {
+        cache: 'no-store',
+        credentials: 'same-origin',
+        headers: getAuthHeaders()
+      });
       if (res.ok) {
         const data = await res.json();
         if (data.authenticated) {
@@ -175,6 +190,7 @@
   function showAuthGate() {
     state.authenticated = false;
     stopAutoRefresh();
+    hideAuthError();
     document.body.dataset.adminState = 'unauthenticated';
     els.authGate.hidden = false;
     els.adminApp.hidden = true;
@@ -183,6 +199,7 @@
 
   function showAdminApp() {
     state.authenticated = true;
+    hideAuthError();
     document.body.dataset.adminState = 'authenticated';
     els.authGate.hidden = true;
     els.adminApp.hidden = false;
@@ -205,13 +222,17 @@
     try {
       const res = await fetch('/api/admin/login', {
         method: 'POST',
+        credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ adminKey: key })
       });
 
       const data = await res.json().catch(() => ({}));
       if (res.ok && data.ok) {
+        state.adminKey = key;
+        try { sessionStorage.setItem('tld_admin_key', key); } catch (_) {}
         els.adminKeyInput.value = '';
+        hideAuthError();
         showAdminApp();
       } else {
         showAuthError(data.message || 'Invalid admin master key.');
@@ -225,8 +246,10 @@
   }
 
   async function handleLogout() {
+    state.adminKey = null;
+    try { sessionStorage.removeItem('tld_admin_key'); } catch (_) {}
     try {
-      await fetch('/api/admin/logout', { method: 'POST' });
+      await fetch('/api/admin/logout', { method: 'POST', credentials: 'same-origin' });
     } catch (_) {}
     showAuthGate();
   }
@@ -254,10 +277,13 @@
     try {
       const res = await fetch('/api/admin/overview', {
         cache: 'no-store',
-        headers: { 'Cache-Control': 'no-cache' }
+        credentials: 'same-origin',
+        headers: getAuthHeaders()
       });
 
       if (res.status === 401) {
+        state.adminKey = null;
+        try { sessionStorage.removeItem('tld_admin_key'); } catch (_) {}
         showAuthGate();
         return;
       }
