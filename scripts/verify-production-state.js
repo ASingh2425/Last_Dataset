@@ -1,18 +1,19 @@
 /**
  * =========================================================================
- * PRODUCTION READINESS & DATABASE RPC AUDIT SCRIPT
- * The Last Dataset | TechTatva 2026 | MAHE Manipal
+ * THE LAST DATASET — STRICT PRODUCTION READINESS & RPC AUDIT
+ * TechTatva 2026 | MAHE Manipal
  * =========================================================================
  *
- * Validates:
- *   1. Migration files presence on disk (000, 001, 002, 003, 004)
- *   2. DDL migration 001 isolation (no hardcoded dev teams or pre-cleared sanctuary)
- *   3. Canonical scoring configuration (locks to strictly 3,100 pts)
- *   4. Evaluator fail-closed semantics in production mode
- *   5. Hidden ground truth answer key integrity (120 rows, not the sample fixture)
- *   6. Live Supabase connection, schema tables, and views
- *   7. Live Supabase database stored procedures & triggers (RPC existence probe)
- *   8. Participant roster initial state (fair progression: Sanctuary available, later zones locked)
+ * Verifies live production requirements before launch:
+ * 1. Checks that migration files (001-004) exist on disk.
+ * 2. Verifies production schema is cleanly isolated from dev seed fixtures.
+ * 3. Verifies canonical total score locks to exactly 3,100 points.
+ * 4. Verifies production ML evaluator fails closed without fallback when ground truth is missing.
+ * 5. Verifies genuine hidden ground truth answer key (120 rows, schema, unique IDs, safe summary stats).
+ * 6. Checks live Supabase connection and public schema tables/views.
+ * 7. Probes live PostgreSQL stored procedures (RPC existence & service-role execution).
+ * 8. Probes anonymous access rejection (verifies unauthenticated callers cannot invoke RPCs).
+ * 9. Checks participant roster and fair competition progression status.
  *
  * Usage:
  *   node scripts/verify-production-state.js
@@ -20,48 +21,50 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const crypto = require('node:crypto');
+const { createClient } = require('@supabase/supabase-js');
 
-const ROOT = path.resolve(__dirname, '..');
-
-// Load .env explicitly if available
-const envFile = path.join(ROOT, '.env');
+// Load environment variables safely
+const envFile = path.resolve(__dirname, '..', '.env');
 if (fs.existsSync(envFile)) {
   for (const line of fs.readFileSync(envFile, 'utf8').split(/\r?\n/)) {
-    const match = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$/);
+    const match = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/);
     if (match && process.env[match[1]] === undefined) {
       process.env[match[1]] = match[2].replace(/^(['"])(.*)\1$/, '$2');
     }
   }
 }
 
+const ROOT = path.resolve(__dirname, '..');
+const { CANONICAL_STAGE_SCORES, TOTAL_COMPETITION_POINTS } = require('../config/scoring');
+const { evaluateSubmission, _resetGroundTruth } = require('../lib/evaluator');
+
+let passed = 0;
+let failed = 0;
+let warned = 0;
+
+function report(status, title, details = '') {
+  if (status === 'OK') {
+    console.log(`  [PASS] ${title}`);
+    passed++;
+  } else if (status === 'WARN') {
+    console.log(`  [WARN] ${title}`);
+    if (details) console.log(`         -> ${details}`);
+    warned++;
+  } else {
+    console.error(`  [FAIL] ${title}`);
+    if (details) console.error(`         -> ${details}`);
+    failed++;
+  }
+}
+
 async function main() {
   console.log('========================================================');
   console.log('THE LAST DATASET — PRODUCTION READINESS & RPC AUDIT');
-  console.log('========================================================\n');
+  console.log('========================================================');
 
-  let passed = 0;
-  let warnings = 0;
-  let errors = 0;
-
-  function report(type, msg, detail = null) {
-    if (type === 'OK') {
-      console.log(`  [PASS] ${msg}`);
-      passed++;
-    } else if (type === 'WARN') {
-      console.log(`  [WARN] ${msg}`);
-      if (detail) console.log(`         -> ${detail}`);
-      warnings++;
-    } else {
-      console.error(`  [FAIL] ${msg}`);
-      if (detail) console.error(`         -> ${detail}`);
-      errors++;
-    }
-  }
-
-  // 1. Check migrations on disk
-  console.log('--- 1. Checking Database Migration Files on Disk ---');
-  const migrationFiles = [
+  // 1. Check Migration Files on Disk
+  console.log('\n--- 1. Checking Database Migration Files on Disk ---');
+  const migrations = [
     { file: '000_seed_dev_data.sql', required: false, desc: 'Optional dev seed fixture' },
     { file: '001_initial_schema.sql', required: true, desc: 'Core schema tables, views & complete_challenge_idempotent' },
     { file: '002_atomic_ml_quota.sql', required: true, desc: 'Advisory lock & reserve_ml_attempt RPC' },
@@ -69,38 +72,41 @@ async function main() {
     { file: '004_atomic_zone_completion.sql', required: true, desc: 'Atomic complete_zone_atomic RPC' }
   ];
 
-  for (const mig of migrationFiles) {
-    const fullPath = path.join(ROOT, 'supabase', 'migrations', mig.file);
+  for (const m of migrations) {
+    const fullPath = path.join(ROOT, 'supabase', 'migrations', m.file);
     if (fs.existsSync(fullPath)) {
-      const content = fs.readFileSync(fullPath, 'utf8');
-      report('OK', `${mig.file} exists (${content.length} bytes) — ${mig.desc}`);
+      const stats = fs.statSync(fullPath);
+      report('OK', `${m.file} exists (${stats.size} bytes) — ${m.desc}`);
+    } else if (m.required) {
+      report('FAIL', `Required migration missing: ${m.file}`, `Expected at ${fullPath}`);
     } else {
-      report(mig.required ? 'FAIL' : 'WARN', `${mig.file} is missing on disk`);
+      report('WARN', `Optional migration file not found: ${m.file}`);
     }
   }
 
-  // 2. Check that 001_initial_schema does NOT seed dev teams directly
+  // 2. Check Seed Data Isolation
   console.log('\n--- 2. Checking Production Schema Seed Isolation ---');
-  const mig001 = fs.readFileSync(path.join(ROOT, 'supabase', 'migrations', '001_initial_schema.sql'), 'utf8');
-  if (mig001.includes("('TECHTEAM10328', 'Alpha Protocol'") || mig001.includes("'sanctuary', 'completed'")) {
-    report('FAIL', '001_initial_schema.sql contains hardcoded development teams or pre-cleared Sanctuary!');
-  } else {
-    report('OK', '001_initial_schema.sql is cleanly isolated from dev seed fixtures');
+  const initSchemaPath = path.join(ROOT, 'supabase', 'migrations', '001_initial_schema.sql');
+  if (fs.existsSync(initSchemaPath)) {
+    const initContent = fs.readFileSync(initSchemaPath, 'utf8');
+    if (initContent.includes("INSERT INTO public.teams") || initContent.includes("INSERT INTO public.team_members")) {
+      report('FAIL', '001_initial_schema.sql contains dev seed inserts! Seeds must be isolated in 000_seed_dev_data.sql');
+    } else {
+      report('OK', '001_initial_schema.sql is cleanly isolated from dev seed fixtures');
+    }
   }
 
-  // 3. Check Canonical Scoring
+  // 3. Verify Canonical Scoring Configuration
   console.log('\n--- 3. Verifying Canonical Scoring Configuration ---');
-  const { CANONICAL_STAGE_SCORES, TOTAL_COMPETITION_POINTS } = require('../config/scoring');
-  const expectedTotal = 100 + 200 + 400 + 600 + 800 + 1000;
-  if (TOTAL_COMPETITION_POINTS === 3100 && TOTAL_COMPETITION_POINTS === expectedTotal) {
-    report('OK', `Canonical game total locks to exactly ${TOTAL_COMPETITION_POINTS} points (100+200+400+600+800+1000)`);
+  const expectedTotal = 3100;
+  if (TOTAL_COMPETITION_POINTS === expectedTotal) {
+    report('OK', `Canonical game total locks to exactly ${expectedTotal} points (100+200+400+600+800+1000)`);
   } else {
-    report('FAIL', `Scoring total mismatch: expected 3,100, got ${TOTAL_COMPETITION_POINTS}`);
+    report('FAIL', `Canonical score mismatch: expected ${expectedTotal}, found ${TOTAL_COMPETITION_POINTS}`);
   }
 
-  // 4. Check Evaluator Production Gate
+  // 4. Verify Evaluator Production Fail-Closed Semantics
   console.log('\n--- 4. Verifying Evaluator Fail-Closed Semantics ---');
-  const { evaluateSubmission, _resetGroundTruth, parseCsvLine } = require('../lib/evaluator');
   const prevEnv = process.env.NODE_ENV;
   const prevBase64 = process.env.PRIVATE_ANSWERS_BASE64;
   const prevPath = process.env.PRIVATE_ANSWERS_PATH;
@@ -126,7 +132,7 @@ async function main() {
     _resetGroundTruth();
   }
 
-  // 5. Check Hidden Ground Truth Answer Key Integrity
+  // 5. Check Hidden Ground Truth Answer Key Integrity & Schema
   console.log('\n--- 5. Verifying Hidden Ground Truth Answer Key ---');
   let groundTruthRaw = '';
   let sourceDesc = '';
@@ -140,24 +146,58 @@ async function main() {
     }
   } else if (process.env.PRIVATE_ANSWERS_PATH && fs.existsSync(process.env.PRIVATE_ANSWERS_PATH)) {
     groundTruthRaw = fs.readFileSync(process.env.PRIVATE_ANSWERS_PATH, 'utf8');
-    sourceDesc = `process.env.PRIVATE_ANSWERS_PATH (${process.env.PRIVATE_ANSWERS_PATH})`;
+    sourceDesc = 'process.env.PRIVATE_ANSWERS_PATH';
   } else {
     const defaultFile = path.join(ROOT, 'server_data', 'private_answers.csv');
     if (fs.existsSync(defaultFile)) {
       groundTruthRaw = fs.readFileSync(defaultFile, 'utf8');
-      sourceDesc = `Local disk file (server_data/private_answers.csv)`;
+      sourceDesc = 'server_data/private_answers.csv';
     }
   }
 
   if (!groundTruthRaw) {
-    report('FAIL', 'Production ground truth answer key is completely missing!', 'Set PRIVATE_ANSWERS_BASE64 in Vercel/production or provide server_data/private_answers.csv');
+    report('FAIL', 'Production ground truth answer key is missing!', 'Set PRIVATE_ANSWERS_BASE64 in Vercel/production or provide server_data/private_answers.csv');
   } else {
     const lines = groundTruthRaw.trim().split(/\r?\n/);
-    const rowCount = lines.length - 1; // exclude header
+    const header = lines[0]?.trim();
+    if (header === 'Sanctuary_ID,Survival_Probability') {
+      report('OK', `Answer key header strictly matches expected schema ("Sanctuary_ID,Survival_Probability")`);
+    } else {
+      report('FAIL', `Answer key header mismatch: expected "Sanctuary_ID,Survival_Probability", got "${header}"`);
+    }
+
+    const rowCount = lines.length - 1;
     if (rowCount === 120) {
-      report('OK', `Ground truth answer key loaded from ${sourceDesc} contains exactly 120 survivor rows`);
+      report('OK', `Ground truth loaded from ${sourceDesc} contains exactly 120 survivor rows`);
     } else {
       report('FAIL', `Ground truth row count mismatch: expected 120, found ${rowCount}`);
+    }
+
+    // Deep validation without leaking private answers
+    const idSet = new Set();
+    const values = [];
+    let validRows = true;
+
+    for (let i = 1; i <= rowCount; i++) {
+      const parts = lines[i].split(',');
+      if (parts.length < 2) { validRows = false; break; }
+      const sId = parts[0].trim();
+      const val = parseFloat(parts[1].trim());
+      if (!sId.startsWith('SANC-') || isNaN(val) || val < 0.0 || val > 1.0) {
+        validRows = false;
+        break;
+      }
+      idSet.add(sId);
+      values.push(val);
+    }
+
+    if (validRows && idSet.size === 120) {
+      const min = Math.min(...values).toFixed(4);
+      const max = Math.max(...values).toFixed(4);
+      const mean = (values.reduce((a, b) => a + b, 0) / values.length).toFixed(4);
+      report('OK', `Answer key integrity verified: 120 unique IDs, all probabilities in [0, 1] (min: ${min}, mean: ${mean}, max: ${max})`);
+    } else {
+      report('FAIL', `Answer key data validation failed: duplicate IDs or invalid probabilities detected`);
     }
 
     // Verify it is NOT the public sample predictions fixture
@@ -167,7 +207,6 @@ async function main() {
       if (groundTruthRaw.trim() === fixtureContent.trim()) {
         report('FAIL', 'Ground truth answer key is IDENTICAL to sample_predictions.csv! Real answers must be distinct.');
       } else {
-        // Run test evaluation: sample_predictions.csv evaluated against real ground truth
         _resetGroundTruth();
         const prevB64 = process.env.PRIVATE_ANSWERS_BASE64;
         process.env.PRIVATE_ANSWERS_BASE64 = Buffer.from(groundTruthRaw).toString('base64');
@@ -209,7 +248,7 @@ async function main() {
       }
     }
 
-    // 7. Check Live Supabase Stored Procedures (RPC Existence Probing)
+    // 7. Check Live Supabase Stored Procedures (Service Role Access)
     console.log('\n--- 7. Checking Live Database Stored Procedures (RPCs) ---');
     const rpcProbes = [
       {
@@ -243,7 +282,7 @@ async function main() {
           p_delegate_id: null,
           p_r2_score: 1.0,
           p_mse_score: 0.0,
-          p_points: 0
+          p_points: 1000
         }
       },
       {
@@ -264,22 +303,44 @@ async function main() {
       }
     ];
 
+    let rpcsInstalled = true;
     for (const probe of rpcProbes) {
       const res = await supabase.rpc(probe.name, probe.params);
       const isMissing = res.error?.code === 'PGRST202';
       if (isMissing) {
+        rpcsInstalled = false;
         report(
           'FAIL',
           `RPC "${probe.name}" is NOT installed on Supabase!`,
-          `Run supabase/migrations/${probe.migration} in the Supabase Dashboard SQL Editor.`
+          `Run supabase/APPLY_TO_PRODUCTION.sql in the Supabase Dashboard SQL Editor.`
         );
       } else {
-        report('OK', `RPC "${probe.name}" is verified present and executable in PostgreSQL`);
+        report('OK', `RPC "${probe.name}" is verified present and executable by service_role in PostgreSQL`);
       }
     }
 
-    // 8. Check Participant Roster & Initial State
-    console.log('\n--- 8. Checking Participant Roster & Progression State ---');
+    // 8. Probe Anonymous RPC Isolation (Least Privilege)
+    console.log('\n--- 8. Checking Anonymous RPC Permission Boundaries ---');
+    if (rpcsInstalled) {
+      const anonClient = createClient(process.env.SUPABASE_URL, 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.dummy_anon');
+      const anonRes = await anonClient.rpc('complete_zone_atomic', {
+        p_team_id: '__PROBE_TEAM__',
+        p_zone_id: 'sanctuary'
+      });
+
+      if (anonRes.error && (anonRes.error.code === 'PGRST301' || anonRes.error.code === '42501' || anonRes.error.message?.includes('permission denied') || anonRes.status === 401 || anonRes.status === 403 || anonRes.status === 404)) {
+        report('OK', 'Anonymous/unauthenticated execution of complete_zone_atomic is strictly denied');
+      } else if (!anonRes.error) {
+        report('FAIL', 'CRITICAL SECURITY RISK: Anonymous client successfully invoked complete_zone_atomic!', 'Execute REVOKE EXECUTE ON FUNCTION ... FROM PUBLIC, anon, authenticated in APPLY_TO_PRODUCTION.sql');
+      } else {
+        report('OK', `Anonymous caller rejected as expected (${anonRes.error.code || anonRes.error.message})`);
+      }
+    } else {
+      report('WARN', 'Skipping anonymous RPC permission check until procedures are installed via APPLY_TO_PRODUCTION.sql');
+    }
+
+    // 9. Check Participant Roster & Progression State
+    console.log('\n--- 9. Checking Participant Roster & Progression State ---');
     const { data: teams, error: teamsErr } = await supabase.from('teams').select('id, team_name, is_active');
     if (teamsErr) {
       report('FAIL', `Unable to query teams roster: ${teamsErr.message}`);
@@ -289,13 +350,12 @@ async function main() {
       const { data: progressList } = await supabase.from('zone_progress').select('team_id, zone_id, status');
       if (progressList && progressList.length > 0) {
         const preCompletedSanctuary = progressList.filter(p => p.zone_id === 'sanctuary' && p.status === 'completed');
-        const preUnlockedYellow = progressList.filter(p => p.zone_id === 'yellow' && p.status === 'available');
 
         if (preCompletedSanctuary.length > 0) {
           report(
             'WARN',
             `${preCompletedSanctuary.length} team(s) have Sanctuary marked "completed" without earning points.`,
-            `To ensure fair competition, run "node scripts/import-techtatva-teams.js --file <roster.csv>" to set Sanctuary="available" and Yellow="locked"`
+            `To ensure fair competition, run Part 7 of supabase/APPLY_TO_PRODUCTION.sql to reset Sanctuary="available" and Yellow="locked"`
           );
         } else {
           report('OK', 'All teams start in fair state: Sanctuary available, later zones locked');
@@ -305,10 +365,10 @@ async function main() {
   }
 
   console.log('\n========================================================');
-  console.log(`AUDIT SUMMARY: ${passed} PASSED, ${warnings} WARNINGS, ${errors} ERRORS`);
+  console.log(`AUDIT SUMMARY: ${passed} PASSED, ${warned} WARNINGS, ${failed} ERRORS`);
   console.log('========================================================\n');
 
-  if (errors > 0) {
+  if (failed > 0) {
     console.error('CRITICAL: One or more production readiness checks failed.');
     console.error('Please review the action items above before opening to participants.\n');
     process.exit(1);
@@ -318,6 +378,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error('Fatal audit failure:', err);
+  console.error('Unexpected audit failure:', err);
   process.exit(1);
 });

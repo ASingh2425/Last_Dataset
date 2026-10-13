@@ -12,6 +12,8 @@
     "dev": "node server.js",
     "test": "node --test tests/hub.test.js tests/store.test.js tests/security-audit.test.js tests/two-player-e2e.test.js",
     "test:integration": "node tests/test-supabase-integration.js",
+    "test:staging:ownership": "node --test tests/staging-score-ownership.test.js",
+    "test:staging:e2e": "node --test tests/two-player-supabase-e2e.test.js",
     "test:load": "node scripts/load-test.js",
     "audit:production": "node scripts/verify-production-state.js",
     "dev:solve": "node scripts/dev-solve.js",

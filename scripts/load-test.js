@@ -7,14 +7,14 @@
  * Simulates 800 participants (400 teams of 2 players) running concurrent:
  * - 2-player team registrations & 3rd player cap rejection
  * - Sanctuary clearance (100 pts)
- * - HMAC/Dev challenge completions & Sector clearances (Yellow 200, Blue 400, Orange 600, Red 800)
+ * - Sector clearances (Yellow 200, Blue 400, Orange 600, Red 800)
  * - Dataset downloads
  * - ML submissions (non-qualifying, qualifying 1,000 pts, permanent lock 429)
  * - Concurrent live leaderboard polling
  * - Score ledger audit (strictly 3,100 points)
  *
  * Usage:
- *   node scripts/load-test.js [--teams 400] [--concurrency 40]
+ *   node scripts/load-test.js [--teams 400] [--concurrency 40] [--production-rate-limits] [--supabase] [--report path.json]
  */
 
 const fs = require('node:fs');
@@ -71,13 +71,29 @@ class Metrics {
     this.latencies = [];
     this.totalRequests = 0;
     this.errors = [];
+    this.statusCodes = {};
+    this.endpointStats = {};
     this.startTime = Date.now();
   }
 
-  record(latencyMs, isError = false, errorMsg = '') {
+  record(route, status, latencyMs, isError = false, errorMsg = '') {
     this.latencies.push(latencyMs);
     this.totalRequests++;
-    if (isError) this.errors.push(errorMsg);
+
+    this.statusCodes[status] = (this.statusCodes[status] || 0) + 1;
+
+    const ep = route.split('?')[0];
+    if (!this.endpointStats[ep]) {
+      this.endpointStats[ep] = { requests: 0, successes: 0, failures: 0, latencies: [] };
+    }
+    this.endpointStats[ep].requests++;
+    this.endpointStats[ep].latencies.push(latencyMs);
+    if (isError) {
+      this.endpointStats[ep].failures++;
+      this.errors.push(`${status} on ${route}: ${errorMsg}`);
+    } else {
+      this.endpointStats[ep].successes++;
+    }
   }
 
   summary() {
@@ -93,12 +109,35 @@ class Metrics {
     const avg = n ? Math.round(this.latencies.reduce((a, b) => a + b, 0) / n) : 0;
     const reqPerSec = Math.round(this.totalRequests / elapsedSec);
 
+    // Compute endpoint summaries
+    const endpointSummary = {};
+    for (const [ep, stats] of Object.entries(this.endpointStats)) {
+      stats.latencies.sort((a, b) => a - b);
+      const epLen = stats.latencies.length;
+      endpointSummary[ep] = {
+        requests: stats.requests,
+        successes: stats.successes,
+        failures: stats.failures,
+        p50: epLen ? stats.latencies[Math.floor(epLen * 0.5)] : 0,
+        p99: epLen ? stats.latencies[Math.floor(epLen * 0.99)] : 0
+      };
+    }
+
+    const http429 = this.statusCodes[429] || 0;
+    const http5xx = Object.entries(this.statusCodes)
+      .filter(([code]) => code >= 500)
+      .reduce((sum, [, count]) => sum + count, 0);
+
     return {
       elapsedSec: elapsedSec.toFixed(2),
       totalRequests: this.totalRequests,
       reqPerSec,
       errorCount: this.errors.length,
-      latencies: { min, avg, p50, p90, p95, p99, max }
+      statusCodes: this.statusCodes,
+      http429Count: http429,
+      http5xxCount: http5xx,
+      latencies: { min, avg, p50, p90, p95, p99, max },
+      endpoints: endpointSummary
     };
   }
 }
@@ -117,7 +156,8 @@ async function request(baseUrl, route, options = {}, metrics) {
     const latency = Date.now() - start;
     const contentType = res.headers.get('content-type') || '';
     const data = contentType.includes('application/json') ? await res.json() : await res.text();
-    if (metrics) metrics.record(latency, !res.ok && !options.expectedError, `${res.status} on ${route}`);
+    const isErr = !res.ok && !options.expectedError;
+    if (metrics) metrics.record(route, res.status, latency, isErr, typeof data === 'object' ? data.error : '');
     return {
       status: res.status,
       data,
@@ -125,14 +165,14 @@ async function request(baseUrl, route, options = {}, metrics) {
     };
   } catch (err) {
     const latency = Date.now() - start;
-    if (metrics) metrics.record(latency, true, err.message);
+    if (metrics) metrics.record(route, 0, latency, true, err.message);
     throw err;
   }
 }
 
 async function simulateTeamJourney(teamIndex, baseUrl, metrics, winningCsv, lowCsv) {
-  const teamId = `LOAD-TEAM-${String(teamIndex).padStart(4, '0')}`;
-  const teamName = `Squad ${teamIndex}`;
+  const teamId = `BENCH-TEAM-${String(teamIndex).padStart(4, '0')}`;
+  const teamName = `Benchmark Squad ${teamIndex}`;
 
   // 1. Player 1 registers
   const p1Reg = await request(baseUrl, '/api/register', {
@@ -168,75 +208,127 @@ async function simulateTeamJourney(teamIndex, baseUrl, metrics, winningCsv, lowC
   }, metrics);
   if (sancRes.status !== 200) throw new Error(`Sanctuary completion failed: ${sancRes.status}`);
 
-  // 5. Progression through Yellow (200), Blue (400), Orange (600), Red (800)
-  const sectors = [
-    { zone: 'yellow', ctf: 'yellow-01' },
-    { zone: 'blue', ctf: 'blue-01' },
-    { zone: 'orange', ctf: 'orange-01' },
-    { zone: 'red', ctf: 'red-01' }
-  ];
-
-  for (const sector of sectors) {
-    // Solve challenge
-    const solveRes = await request(baseUrl, '/api/dev/solve', {
-      method: 'POST',
-      headers: { Cookie: cookie1 },
-      body: { ctfId: sector.ctf }
-    }, metrics);
-    if (solveRes.status !== 200) throw new Error(`Solve ${sector.ctf} failed: ${solveRes.status}`);
-
-    // Complete sector
-    const clearRes = await request(baseUrl, '/api/zone/complete', {
-      method: 'POST',
-      headers: { Cookie: cookie2 }, // Player 2 clears sector
-      body: { zoneId: sector.zone }
-    }, metrics);
-    if (clearRes.status !== 200) throw new Error(`Clear ${sector.zone} failed: ${clearRes.status}`);
-  }
-
-  // 6. Download training data in Purple Zone
-  const trainRes = await request(baseUrl, '/api/dataset/train', {
-    headers: { Cookie: cookie1 }
-  }, metrics);
-  if (trainRes.status !== 200) throw new Error(`Download train.csv failed: ${trainRes.status}`);
-
-  // 7. ML Evaluation: Non-qualifying model first
-  const lowEval = await request(baseUrl, '/api/ml/evaluate', {
-    method: 'POST',
-    headers: { Cookie: cookie1 },
-    body: { csvContent: lowCsv }
-  }, metrics);
-  if (lowEval.status !== 200 || lowEval.data.qualifiesForEscape !== false) {
-    throw new Error(`Low ML eval failed or unexpectedly qualified: ${lowEval.status}`);
-  }
-
-  // 8. ML Evaluation: Winning model (qualifies for escape, awards 1,000 pts)
-  const winEval = await request(baseUrl, '/api/ml/evaluate', {
+  // 5. Yellow Sector: solve yellow-01, then clear Yellow (200 pts)
+  const solveY = await request(baseUrl, '/api/dev/solve', {
     method: 'POST',
     headers: { Cookie: cookie2 },
-    body: { csvContent: winningCsv }
+    body: { ctfId: 'yellow-01' }
   }, metrics);
-  if (winEval.status !== 200 || winEval.data.qualifiesForEscape !== true) {
-    throw new Error(`Winning ML eval failed to qualify: ${winEval.status}`);
-  }
+  if (solveY.status !== 200) throw new Error(`Yellow solve failed: ${solveY.status}`);
 
-  // 9. Permanent Lock: subsequent submission returns 429 PURPLE_ALREADY_COMPLETED
-  const lockedEval = await request(baseUrl, '/api/ml/evaluate', {
+  const yellowRes = await request(baseUrl, '/api/zone/complete', {
+    method: 'POST',
+    headers: { Cookie: cookie2 },
+    body: { zoneId: 'yellow' }
+  }, metrics);
+  if (yellowRes.status !== 200) throw new Error(`Yellow completion failed: ${yellowRes.status}`);
+
+  // 6. Dataset download: community_final
+  const ds1Res = await request(baseUrl, '/api/dataset/community_final', {
+    headers: { Cookie: cookie1 }
+  }, metrics);
+  if (ds1Res.status !== 200) throw new Error(`Dataset community_final failed: ${ds1Res.status}`);
+
+  // 7. Blue Sector: solve blue-01, then clear Blue (400 pts)
+  const solveB = await request(baseUrl, '/api/dev/solve', {
     method: 'POST',
     headers: { Cookie: cookie1 },
-    body: { csvContent: winningCsv },
-    expectedError: true
+    body: { ctfId: 'blue-01' }
   }, metrics);
-  if (lockedEval.status !== 429 || lockedEval.data.error !== 'PURPLE_ALREADY_COMPLETED') {
-    throw new Error(`Expected 429 PURPLE_ALREADY_COMPLETED after escape, got ${lockedEval.status}`);
+  if (solveB.status !== 200) throw new Error(`Blue solve failed: ${solveB.status}`);
+
+  const blueRes = await request(baseUrl, '/api/zone/complete', {
+    method: 'POST',
+    headers: { Cookie: cookie1 },
+    body: { zoneId: 'blue' }
+  }, metrics);
+  if (blueRes.status !== 200) throw new Error(`Blue completion failed: ${blueRes.status}`);
+
+  // 8. Dataset download: radio_final
+  const ds2Res = await request(baseUrl, '/api/dataset/radio_final', {
+    headers: { Cookie: cookie2 }
+  }, metrics);
+  if (ds2Res.status !== 200) throw new Error(`Dataset radio_final failed: ${ds2Res.status}`);
+
+  // 9. Orange Sector: solve orange-01, then clear Orange (600 pts)
+  const solveO = await request(baseUrl, '/api/dev/solve', {
+    method: 'POST',
+    headers: { Cookie: cookie2 },
+    body: { ctfId: 'orange-01' }
+  }, metrics);
+  if (solveO.status !== 200) throw new Error(`Orange solve failed: ${solveO.status}`);
+
+  const orangeRes = await request(baseUrl, '/api/zone/complete', {
+    method: 'POST',
+    headers: { Cookie: cookie2 },
+    body: { zoneId: 'orange' }
+  }, metrics);
+  if (orangeRes.status !== 200) throw new Error(`Orange completion failed: ${orangeRes.status}`);
+
+  // 10. Dataset download: forensics_final
+  const ds3Res = await request(baseUrl, '/api/dataset/forensics_final', {
+    headers: { Cookie: cookie1 }
+  }, metrics);
+  if (ds3Res.status !== 200) throw new Error(`Dataset forensics_final failed: ${ds3Res.status}`);
+
+  // 11. Red Sector: solve red-01, then clear Red (800 pts)
+  const solveR = await request(baseUrl, '/api/dev/solve', {
+    method: 'POST',
+    headers: { Cookie: cookie1 },
+    body: { ctfId: 'red-01' }
+  }, metrics);
+  if (solveR.status !== 200) throw new Error(`Red solve failed: ${solveR.status}`);
+
+  const redRes = await request(baseUrl, '/api/zone/complete', {
+    method: 'POST',
+    headers: { Cookie: cookie1 },
+    body: { zoneId: 'red' }
+  }, metrics);
+  if (redRes.status !== 200) throw new Error(`Red completion failed: ${redRes.status}`);
+
+  // 12. Dataset download: train.csv
+  const trainRes = await request(baseUrl, '/api/dataset/train', {
+    headers: { Cookie: cookie2 }
+  }, metrics);
+  if (trainRes.status !== 200) throw new Error(`Dataset train.csv failed: ${trainRes.status}`);
+
+  // 13. Non-qualifying submission (attempt 1/10)
+  const sub1 = await request(baseUrl, '/api/ml/evaluate', {
+    method: 'POST',
+    headers: { Cookie: cookie2 },
+    body: { csvContent: lowCsv, rawFilename: 'submission_low.csv' }
+  }, metrics);
+  if (sub1.status !== 200) throw new Error(`ML submission 1 failed: ${sub1.status}`);
+
+  // 14. Qualifying ML submission (awards 1,000 pts -> 3,100 pts total)
+  const sub2 = await request(baseUrl, '/api/ml/evaluate', {
+    method: 'POST',
+    headers: { Cookie: cookie1 },
+    body: { csvContent: winningCsv, rawFilename: 'submission_win.csv' }
+  }, metrics);
+  if (sub2.status !== 200 || !sub2.data.qualifiesForEscape) {
+    throw new Error(`ML submission 2 qualifying failed: ${sub2.status}`);
   }
 
-  // 10. Bootstrap sync verification for both teammates
-  const boot1 = await request(baseUrl, '/api/bootstrap', { headers: { Cookie: cookie1 } }, metrics);
-  const boot2 = await request(baseUrl, '/api/bootstrap', { headers: { Cookie: cookie2 } }, metrics);
+  // 15. Permanent submission lock verification (429 PURPLE_ALREADY_COMPLETED)
+  const lockedSub = await request(baseUrl, '/api/ml/evaluate', {
+    method: 'POST',
+    headers: { Cookie: cookie1 },
+    body: { csvContent: winningCsv, rawFilename: 'submission_blocked.csv' },
+    expectedError: true
+  }, metrics);
+  if (lockedSub.status !== 429 || lockedSub.data.error !== 'PURPLE_ALREADY_COMPLETED') {
+    throw new Error(`Permanent ML lock expected 429 PURPLE_ALREADY_COMPLETED, got ${lockedSub.status}`);
+  }
+
+  // 16. Verify bootstrap state across both teammates
+  const [boot1, boot2] = await Promise.all([
+    request(baseUrl, '/api/bootstrap', { headers: { Cookie: cookie1 } }, metrics),
+    request(baseUrl, '/api/bootstrap', { headers: { Cookie: cookie2 } }, metrics)
+  ]);
 
   if (boot1.data.score.total !== 3100 || boot2.data.score.total !== 3100) {
-    throw new Error(`Team score mismatch: expected exactly 3100, got ${boot1.data.score.total} / ${boot2.data.score.total}`);
+    throw new Error(`Canonical score mismatch: expected 3,100 pts, got P1=${boot1.data.score.total}, P2=${boot2.data.score.total}`);
   }
   if (!boot1.data.ml.escapeUnlocked || !boot2.data.ml.escapeUnlocked) {
     throw new Error('Escape gate not unlocked for both players');
@@ -265,6 +357,11 @@ async function main() {
     DISABLE_RATE_LIMIT: productionRateLimits ? 'false' : 'true'
   };
 
+  if (useSupabase) {
+    serverEnv.SUPABASE_URL = process.env.SUPABASE_URL;
+    serverEnv.SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  }
+
   if (productionRateLimits) {
     serverEnv.API_RATE_LIMIT_MAX = '10000';
     serverEnv.LOGIN_RATE_LIMIT_MAX = '5000';
@@ -278,7 +375,7 @@ async function main() {
 
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   const baseUrl = `http://127.0.0.1:${server.address().port}`;
-  console.log(`Local hub server listening at ${baseUrl}\n`);
+  console.log(`Hub server listening at ${baseUrl}\n`);
 
   const metrics = new Metrics();
   const winningCsv = getWinningCsv();
@@ -330,6 +427,8 @@ async function main() {
   console.log(`Elapsed Execution Time:  ${duration}s`);
   console.log(`Average Throughput:      ${summary.reqPerSec} req/sec`);
   console.log(`Total Errors Encountered: ${summary.errorCount}`);
+  console.log(`HTTP 429 Count:          ${summary.http429Count}`);
+  console.log(`HTTP 5xx Count:          ${summary.http5xxCount}`);
   console.log(`Latency Min:             ${summary.latencies.min}ms`);
   console.log(`Latency Avg:             ${summary.latencies.avg}ms`);
   console.log(`Latency p50:             ${summary.latencies.p50}ms`);
@@ -351,15 +450,20 @@ async function main() {
       teams,
       participants,
       concurrency,
-      useSupabase,
-      productionRateLimits
+      storageMode: useSupabase ? 'supabase-postgresql' : 'local-filesystem',
+      productionRateLimitsActive: productionRateLimits,
+      rateLimits: productionRateLimits ? { apiMax: 10000, loginMax: 5000 } : 'disabled'
     },
     results: {
       totalRequests: summary.totalRequests,
       durationSeconds: parseFloat(duration),
       throughputReqSec: summary.reqPerSec,
       errorCount: summary.errorCount,
+      http429Count: summary.http429Count,
+      http5xxCount: summary.http5xxCount,
+      statusCodes: summary.statusCodes,
       latencies: summary.latencies,
+      endpoints: summary.endpoints,
       leaderboardQualifiedTeams: board.length,
       allTeamsAtCanonical3100: all3100,
       passed: summary.errorCount === 0 && all3100
