@@ -20,20 +20,40 @@ function getHubServer() {
   return hubServer;
 }
 
-const handler = (req, res) => {
-  let targetUrl = req.headers['x-matched-path'] || req.headers['x-vercel-matched-path'] || req.headers['x-rewrite-url'] || req.headers['x-forwarded-uri'];
-  if (!targetUrl && req.url) {
-    try {
-      const parsed = new URL(req.url, 'http://localhost');
-      if (parsed.searchParams.has('_path')) {
-        targetUrl = parsed.searchParams.get('_path');
+const handler = async (req, res) => {
+  try {
+    let targetUrl = null;
+    if (req.url) {
+      try {
+        const parsed = new URL(req.url, 'http://localhost');
+        if (parsed.searchParams.has('_path')) {
+          targetUrl = parsed.searchParams.get('_path');
+        }
+      } catch (_) {}
+    }
+    if (!targetUrl) {
+      const headerPath = req.headers['x-matched-path'] || req.headers['x-vercel-matched-path'] || req.headers['x-rewrite-url'] || req.headers['x-forwarded-uri'];
+      if (headerPath && !headerPath.startsWith('/server.js')) {
+        targetUrl = headerPath;
       }
-    } catch (_) {}
+    }
+    if (targetUrl) {
+      req.url = targetUrl;
+    }
+    return await getHubServer().handler(req, res);
+  } catch (error) {
+    console.error('[Hub Serverless Handler Error]', error);
+    if (!res.headersSent) {
+      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({
+        error: 'SERVERLESS_FUNCTION_ERROR',
+        message: error.message,
+        hint: (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY)
+          ? 'SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY is missing. Please configure them in your Vercel Project Settings > Environment Variables.'
+          : error.message
+      }));
+    }
   }
-  if (targetUrl) {
-    req.url = targetUrl;
-  }
-  return getHubServer().handler(req, res);
 };
 
 if (require.main === module) {

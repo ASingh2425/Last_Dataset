@@ -1,0 +1,508 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#07090d">
+  <meta name="description" content="THE LAST DATASET — Central Organizer Command Deck and Admin Dashboard">
+  <title>THE LAST DATASET // COMMAND DECK (ADMIN)</title>
+  <link rel="stylesheet" href="/admin/admin.css?v=20261013">
+  <script src="/admin/admin.js?v=20261013" defer></script>
+</head>
+<body data-admin-state="loading">
+  <!-- Subtle scanline / atmosphere layer -->
+  <div class="deck-scanlines" aria-hidden="true"></div>
+  <div class="deck-grid-bg" aria-hidden="true"></div>
+
+  <!-- AUTHENTICATION GATE (Shown when unauthenticated) -->
+  <div id="auth-gate" class="auth-gate" hidden>
+    <div class="auth-panel">
+      <div class="auth-header">
+        <div class="brand-lockup">
+          <span class="brand-mark"><span class="brand-glyph">L<span>/</span>D</span></span>
+          <div class="brand-titles">
+            <h1>COMMAND DECK</h1>
+            <small>THE LAST DATASET // RESTRICTED ACCESS</small>
+          </div>
+        </div>
+        <span class="security-level">SEC-LEVEL: ORGANIZER 01</span>
+      </div>
+
+      <div class="auth-body">
+        <div class="auth-icon-wrap">
+          <span class="auth-icon">🔒</span>
+        </div>
+        <h2>AUTHORIZATION REQUIRED</h2>
+        <p class="auth-desc">Access to live competition data, team progression, score ledgers, and ML submissions requires organizer authentication.</p>
+
+        <form id="admin-login-form" novalidate autocomplete="off">
+          <label class="input-label" for="admin-key-input">ADMIN MASTER KEY</label>
+          <div class="input-wrap">
+            <span class="input-prefix">KEY //</span>
+            <input id="admin-key-input" type="password" placeholder="Enter admin master key…" required autofocus autocomplete="current-password">
+            <button type="button" id="toggle-key-visibility" class="toggle-visibility" title="Toggle visibility">👁</button>
+          </div>
+
+          <div id="auth-error-banner" class="alert-banner alert-error" role="alert" hidden>
+            <span class="alert-icon">⚠</span>
+            <span id="auth-error-text">Authentication failed.</span>
+          </div>
+
+          <button id="auth-submit-btn" type="submit" class="btn btn-primary btn-block">
+            <span class="btn-glow"></span>
+            <span class="btn-text">UNLOCK COMMAND DECK →</span>
+          </button>
+        </form>
+      </div>
+
+      <div class="auth-footer">
+        <span>CENTRAL BACKEND AUTHORIZATION · NO SECRETS STORED CLIENT-SIDE</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN ADMIN APPLICATION (Shown when authenticated) -->
+  <div id="admin-app" class="admin-app" hidden>
+    <!-- TOP NAVIGATION BAR -->
+    <header class="deck-topbar">
+      <div class="topbar-left">
+        <a href="/" class="home-link" title="Return to Survivor Network Hub">
+          <span class="brand-glyph">L/D</span>
+        </a>
+        <div class="deck-titles">
+          <div class="title-row">
+            <h2>COMMAND DECK</h2>
+            <span class="badge badge-purple">ADMIN CONSOLE</span>
+            <span class="badge badge-live"><span class="pulse-dot"></span> LIVE</span>
+          </div>
+          <p class="subtitle">THE LAST DATASET · REAL-TIME PARTICIPANT PROGRESSION & EVALUATION</p>
+        </div>
+      </div>
+
+      <div class="topbar-center">
+        <div class="clock-display">
+          <span class="clock-label">UTC TIME:</span>
+          <span id="clock-utc" class="clock-val">--:--:--</span>
+          <span class="clock-divider">|</span>
+          <span class="clock-label">LOCAL:</span>
+          <span id="clock-local" class="clock-val">--:--:--</span>
+        </div>
+      </div>
+
+      <div class="topbar-right">
+        <div class="refresh-controls">
+          <span id="last-refreshed-label" class="last-refreshed">Connecting…</span>
+          <button id="manual-refresh-btn" class="btn btn-secondary btn-sm" title="Refresh Now (Hot-key: R)">
+            <span class="refresh-icon">↻</span> Refresh
+          </button>
+          <div class="auto-refresh-select-wrap">
+            <label for="auto-refresh-select" class="sr-only">Auto Refresh</label>
+            <select id="auto-refresh-select" class="select-sm" title="Auto-refresh interval">
+              <option value="0">Auto: OFF</option>
+              <option value="15" selected>Auto: 15s</option>
+              <option value="30">Auto: 30s</option>
+              <option value="60">Auto: 60s</option>
+            </select>
+          </div>
+        </div>
+
+        <button id="export-csv-btn" class="btn btn-primary btn-sm" title="Export team progression to CSV">
+          <span>⤓</span> Export CSV
+        </button>
+
+        <button id="admin-logout-btn" class="btn btn-danger btn-sm" title="Log out of Admin Console">
+          Sign Out
+        </button>
+      </div>
+    </header>
+
+    <!-- MAIN DASHBOARD CONTENT -->
+    <main class="deck-main">
+      <!-- GLOBAL ERROR / WARNING BANNER -->
+      <div id="deck-error-banner" class="alert-banner alert-error" role="alert" hidden>
+        <span class="alert-icon">⚠</span>
+        <div class="alert-content">
+          <strong id="deck-error-title">Data Fetch Error</strong>
+          <p id="deck-error-msg">Failed to query /api/admin/overview.</p>
+        </div>
+        <button id="deck-error-retry" class="btn btn-secondary btn-xs">Retry</button>
+      </div>
+
+      <!-- 1. LIVE METRICS ROW -->
+      <section class="metrics-grid" aria-label="Competition Live Metrics">
+        <!-- Metric 1: Registered Teams -->
+        <div class="metric-card">
+          <div class="metric-header">
+            <span class="metric-tag">PARTICIPANTS</span>
+            <span class="metric-icon">👥</span>
+          </div>
+          <div class="metric-body">
+            <div id="metric-registered-teams" class="metric-value">--</div>
+            <div class="metric-label">Registered Teams</div>
+          </div>
+          <div class="metric-footer">
+            <span id="metric-registered-sub" class="metric-sub">Authoritative roster count</span>
+          </div>
+        </div>
+
+        <!-- Metric 2: Active Teams -->
+        <div class="metric-card">
+          <div class="metric-header">
+            <span class="metric-tag">ENGAGEMENT</span>
+            <span class="metric-icon">⚡</span>
+          </div>
+          <div class="metric-body">
+            <div id="metric-active-teams" class="metric-value metric-amber">--</div>
+            <div class="metric-label">Active Teams</div>
+          </div>
+          <div class="metric-footer">
+            <span id="metric-active-sub" class="metric-sub">In progress & scoring</span>
+          </div>
+        </div>
+
+        <!-- Metric 3: Completed Teams -->
+        <div class="metric-card">
+          <div class="metric-header">
+            <span class="metric-tag">SURVIVORS</span>
+            <span class="metric-icon">🏆</span>
+          </div>
+          <div class="metric-body">
+            <div id="metric-completed-teams" class="metric-value metric-green">--</div>
+            <div class="metric-label">Completed Teams</div>
+          </div>
+          <div class="metric-footer">
+            <span id="metric-completed-sub" class="metric-sub">Full clear · 3,100 pts</span>
+          </div>
+        </div>
+
+        <!-- Metric 4: Points Awarded -->
+        <div class="metric-card">
+          <div class="metric-header">
+            <span class="metric-tag">SCORING TOTAL</span>
+            <span class="metric-icon">🎖</span>
+          </div>
+          <div class="metric-body">
+            <div id="metric-points-awarded" class="metric-value metric-purple">--</div>
+            <div class="metric-label">Points Awarded</div>
+          </div>
+          <div class="metric-footer">
+            <span id="metric-points-sub" class="metric-sub">Live competition ledger sum</span>
+          </div>
+        </div>
+
+        <!-- Metric 5: Purple Submissions / Anomaly Alert -->
+        <div class="metric-card metric-card-secondary">
+          <div class="metric-header">
+            <span class="metric-tag">ML EVALUATION</span>
+            <span class="metric-icon">🔬</span>
+          </div>
+          <div class="metric-body">
+            <div id="metric-ml-submissions" class="metric-value metric-cyan">--</div>
+            <div class="metric-label">ML Submissions Processed</div>
+          </div>
+          <div class="metric-footer">
+            <span id="metric-alerts-badge" class="badge badge-subtle">0 Anomalies Detected</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. FILTER & SEARCH TOOLBAR -->
+      <section class="toolbar-section" aria-label="Table Filters and Search">
+        <div class="search-box">
+          <span class="search-icon">🔍</span>
+          <input id="team-search-input" type="search" placeholder="Search by Team ID, team name, member name, or delegate ID…" aria-label="Search teams">
+          <button id="clear-search-btn" class="clear-search-btn" title="Clear search" hidden>×</button>
+        </div>
+
+        <div class="filter-controls">
+          <div class="filter-group">
+            <label for="filter-stage" class="filter-label">Stage:</label>
+            <select id="filter-stage" class="select-filter">
+              <option value="all">All Stages</option>
+              <option value="sanctuary">Sanctuary</option>
+              <option value="yellow">Yellow</option>
+              <option value="blue">Blue</option>
+              <option value="orange">Orange</option>
+              <option value="red">Red</option>
+              <option value="purple">Purple</option>
+              <option value="completed">Completed</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label for="filter-purple" class="filter-label">Purple:</label>
+            <select id="filter-purple" class="select-filter">
+              <option value="all">All Statuses</option>
+              <option value="locked">Locked</option>
+              <option value="eligible">Eligible (R²≥0.80)</option>
+              <option value="processing">Processing</option>
+              <option value="completed">Completed</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label for="filter-roster" class="filter-label">Roster:</label>
+            <select id="filter-roster" class="select-filter">
+              <option value="all">All Rosters</option>
+              <option value="2">2 Players (Full)</option>
+              <option value="1">1 Player</option>
+              <option value="0">Empty (0)</option>
+              <option value="cap-exceeded">Cap Exceeded (>2)</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label for="filter-integrity" class="filter-label">Integrity:</label>
+            <select id="filter-integrity" class="select-filter">
+              <option value="all">All Integrity</option>
+              <option value="issues">⚠️ Issues / Attention</option>
+              <option value="clean">✓ Valid Progression</option>
+            </select>
+          </div>
+
+          <button id="reset-filters-btn" class="btn btn-ghost btn-xs" title="Reset all filters">
+            Reset Filters
+          </button>
+        </div>
+
+        <div class="toolbar-meta">
+          <span id="teams-count-pill" class="count-pill">Showing 0 / 0 teams</span>
+        </div>
+      </section>
+
+      <!-- 3. SEARCHABLE TEAM TABLE -->
+      <section class="table-container" aria-label="Teams Table">
+        <table id="teams-table" class="deck-table">
+          <thead>
+            <tr>
+              <th scope="col" class="th-sortable" data-sort="id">Team ID & Name</th>
+              <th scope="col" class="th-sortable" data-sort="members">Members (Max 2)</th>
+              <th scope="col" class="th-sortable" data-sort="stage">Current Stage</th>
+              <th scope="col">Completed Stages</th>
+              <th scope="col" class="th-sortable" data-sort="score">Total Score (3,100)</th>
+              <th scope="col" class="th-sortable" data-sort="purple">Purple Status</th>
+              <th scope="col" class="th-sortable" data-sort="activity">Last Activity</th>
+              <th scope="col">Integrity</th>
+              <th scope="col" class="th-action">Action</th>
+            </tr>
+          </thead>
+          <tbody id="teams-tbody">
+            <!-- Dynamic rows rendered via JavaScript -->
+            <tr class="loading-row">
+              <td colspan="9">
+                <div class="table-loading-spinner">
+                  <span class="spinner-circle"></span>
+                  <span>Loading authoritative production teams…</span>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Empty state when no matches -->
+        <div id="table-empty-state" class="empty-state" hidden>
+          <div class="empty-icon">🔎</div>
+          <h3>No matching teams found</h3>
+          <p>Try adjusting your search terms or clearing active filters.</p>
+          <button id="empty-clear-btn" class="btn btn-secondary btn-sm">Clear All Filters</button>
+        </div>
+      </section>
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="deck-footer">
+      <div class="footer-left">
+        <span>THE LAST DATASET · TECHTATVA 2026 // MAHE MANIPAL</span>
+        <span class="divider">/</span>
+        <span>READ-ONLY COMMAND DECK · LAUNCH READY</span>
+      </div>
+      <div class="footer-right">
+        <span id="footer-system-status">● CENTRAL DATABASE CONNECTED</span>
+      </div>
+    </footer>
+  </div>
+
+  <!-- 4. INDIVIDUAL TEAM DETAIL MODAL / DRAWER -->
+  <div id="team-modal-backdrop" class="modal-backdrop" hidden>
+    <div id="team-detail-modal" class="modal-content" role="dialog" aria-modal="true" aria-labelledby="modal-team-title">
+      <!-- Modal Header -->
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div class="modal-badges">
+            <span id="modal-team-id-badge" class="badge badge-id">TEAM-ID</span>
+            <span id="modal-student-type-badge" class="badge badge-subtle">MAHE</span>
+            <span id="modal-stage-badge" class="badge badge-stage">STAGE</span>
+            <span id="modal-integrity-badge" class="badge badge-integrity">INTEGRITY OK</span>
+          </div>
+          <h2 id="modal-team-title">Team Name</h2>
+          <p id="modal-team-created" class="modal-created">Registered: --</p>
+        </div>
+        <button id="modal-close-btn" class="modal-close" aria-label="Close team detail">✕</button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="modal-body">
+        <!-- Inconsistency Alert Banner (if any) -->
+        <div id="modal-inconsistencies-banner" class="alert-banner alert-warning" hidden>
+          <span class="alert-icon">⚠</span>
+          <div class="alert-content">
+            <strong>Progression Inconsistencies Detected</strong>
+            <ul id="modal-inconsistencies-list" class="inconsistencies-list"></ul>
+          </div>
+        </div>
+
+        <!-- Grid: Roster Cards & Scoring Summary -->
+        <div class="detail-two-col">
+          <!-- Roster Inspection Card -->
+          <div class="detail-card">
+            <div class="detail-card-header">
+              <h3>👥 REGISTERED ROSTER (MAX 2 PLAYERS)</h3>
+              <span id="modal-roster-cap-pill" class="badge badge-cap">2 / 2 Players</span>
+            </div>
+            <div class="detail-card-body">
+              <div id="modal-roster-list" class="roster-grid">
+                <!-- Injected via JavaScript -->
+              </div>
+              <div class="leader-contact-row">
+                <span class="contact-label">Leader Phone:</span>
+                <span id="modal-leader-phone" class="contact-value">--</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Total Score Summary Card -->
+          <div class="detail-card">
+            <div class="detail-card-header">
+              <h3>🎖 TOTAL SCORE BREAKDOWN</h3>
+              <span id="modal-score-total-pill" class="badge badge-purple">3,100 / 3,100 PTS</span>
+            </div>
+            <div class="detail-card-body">
+              <div class="score-progress-wrap">
+                <div class="score-progress-bar">
+                  <div id="modal-score-progress-fill" class="score-progress-fill" style="width: 0%;"></div>
+                </div>
+                <div class="score-progress-labels">
+                  <span id="modal-score-pct">0% Complete</span>
+                  <span>Canonical Max: 3,100 PTS</span>
+                </div>
+              </div>
+
+              <!-- Quick Stage Points Strip -->
+              <div class="stage-points-strip">
+                <div class="stage-point-chip" data-zone="sanctuary">
+                  <span class="chip-label">Sanctuary</span>
+                  <span class="chip-pts">+100</span>
+                  <span id="modal-pts-sanctuary" class="chip-status">--</span>
+                </div>
+                <div class="stage-point-chip" data-zone="yellow">
+                  <span class="chip-label">Yellow</span>
+                  <span class="chip-pts">+200</span>
+                  <span id="modal-pts-yellow" class="chip-status">--</span>
+                </div>
+                <div class="stage-point-chip" data-zone="blue">
+                  <span class="chip-label">Blue</span>
+                  <span class="chip-pts">+400</span>
+                  <span id="modal-pts-blue" class="chip-status">--</span>
+                </div>
+                <div class="stage-point-chip" data-zone="orange">
+                  <span class="chip-label">Orange</span>
+                  <span class="chip-pts">+600</span>
+                  <span id="modal-pts-orange" class="chip-status">--</span>
+                </div>
+                <div class="stage-point-chip" data-zone="red">
+                  <span class="chip-label">Red</span>
+                  <span class="chip-pts">+800</span>
+                  <span id="modal-pts-red" class="chip-status">--</span>
+                </div>
+                <div class="stage-point-chip" data-zone="purple">
+                  <span class="chip-label">Purple</span>
+                  <span class="chip-pts">+1000</span>
+                  <span id="modal-pts-purple" class="chip-status">--</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 6-Zone Progression Timeline Grid -->
+        <div class="detail-section">
+          <div class="section-header">
+            <h3>🗺 ZONE PROGRESSION & CHALLENGE-LEVEL COMPLETION</h3>
+            <span id="modal-completed-zones-pill" class="badge badge-subtle">0 / 6 Stages Completed</span>
+          </div>
+          <div id="modal-zones-grid" class="zones-grid">
+            <!-- 6 Zone Cards injected dynamically -->
+          </div>
+        </div>
+
+        <!-- Purple ML Submissions History -->
+        <div class="detail-section">
+          <div class="section-header">
+            <h3>🔬 PURPLE ML EVALUATION & ESCAPE ATTEMPTS</h3>
+            <div class="section-badges">
+              <span id="modal-ml-quota-pill" class="badge badge-subtle">0 / 10 Used</span>
+              <span id="modal-ml-best-r2-pill" class="badge badge-subtle">Best R²: --</span>
+              <span id="modal-ml-escape-pill" class="badge badge-purple">Escape: Locked</span>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table class="sub-table">
+              <thead>
+                <tr>
+                  <th>Attempt</th>
+                  <th>Submitted At</th>
+                  <th>Player (Delegate)</th>
+                  <th>Filename</th>
+                  <th>R² Score</th>
+                  <th>MSE Score</th>
+                  <th>Escape Qualified (≥0.80)</th>
+                  <th>Status / Message</th>
+                </tr>
+              </thead>
+              <tbody id="modal-ml-subs-tbody">
+                <tr>
+                  <td colspan="8" class="text-center text-muted">No ML submissions recorded for this team.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Score Ledger Audit Trail -->
+        <div class="detail-section">
+          <div class="section-header">
+            <h3>📜 SCORE LEDGER AUDIT TRAIL</h3>
+            <span id="modal-ledger-count-pill" class="badge badge-subtle">0 Entries</span>
+          </div>
+
+          <div class="table-wrap">
+            <table class="sub-table">
+              <thead>
+                <tr>
+                  <th>Time (UTC)</th>
+                  <th>Points</th>
+                  <th>Source Type</th>
+                  <th>Source ID</th>
+                  <th>Delegate ID</th>
+                  <th>Idempotency Key</th>
+                </tr>
+              </thead>
+              <tbody id="modal-score-ledger-tbody">
+                <tr>
+                  <td colspan="6" class="text-center text-muted">No score ledger records found.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="modal-footer">
+        <button id="modal-close-footer-btn" class="btn btn-secondary">Close Inspection</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
