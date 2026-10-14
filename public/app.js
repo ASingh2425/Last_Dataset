@@ -191,6 +191,28 @@
         sub.textContent = 'COMPLETE THE SANCTUARY STORYLINE & SOLVE GATE CTF TO ACCESS YELLOW ZONE';
       } else if (zoneId === 'blue') {
         sub.textContent = 'CLEAR ALL 5 YELLOW ZONE CTFS & RETRIEVE COMMUNITY FRAGMENT TO ACCESS BLUE ZONE';
+      } else if (zoneId === 'red' && hub?.zones?.find((z) => z.id === 'blue')?.state === 'cleared') {
+        sub.innerHTML = 'ORANGE ZONE REQUIRED TO ACCESS RED ZONE. <a href="#" id="sync-orange-btn" style="color:#ff8b3d;text-decoration:underline;cursor:pointer;font-weight:bold;">SOLVED ORANGE? CLICK TO SYNC & UNLOCK RED ZONE ↗</a>';
+        const syncBtn = $('#sync-orange-btn');
+        if (syncBtn) {
+          syncBtn.onclick = async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            try {
+              const res = await api('/api/orange/complete', { method: 'POST', body: { teamId: hub?.team?.id } });
+              if (res && res.ok) {
+                applyBootstrap(res.bootstrap || res, { animate: true });
+                renderMapNodes();
+                toast('ORANGE ZONE CLEARED! RED ZONE UNLOCKED!');
+                travelToZone('red');
+              } else {
+                toast('Could not verify Orange Zone clearance.', true);
+              }
+            } catch (err) {
+              toast(err.message || 'Prerequisite not met.', true);
+            }
+          };
+        }
       } else {
         sub.textContent = !hub?.sanctuaryCompleted
           ? 'COMPLETE THE SANCTUARY STORYLINE BRIEFING TO ACCESS QUARANTINE ZONES'
@@ -227,7 +249,23 @@
       return;
     }
     const zone = zoneById(zoneId); if (!zone) return;
-    if (!zone.unlocked) return showDenied(zoneId);
+    if (!zone.unlocked) {
+      if (zoneId === 'red' && hub?.zones?.find((z) => z.id === 'blue')?.state === 'cleared') {
+        try {
+          const res = await api('/api/orange/complete', { method: 'POST', body: { teamId: hub?.team?.id } });
+          if (res && res.ok) {
+            applyBootstrap(res.bootstrap || res, { animate: true });
+            renderMapNodes();
+            toast('ORANGE SECTOR CONFIRMED · RED ZONE UNLOCKED!');
+            const updatedRed = zoneById('red');
+            if (updatedRed && updatedRed.unlocked) {
+              return travelToZone('red');
+            }
+          }
+        } catch (_) {}
+      }
+      return showDenied(zoneId);
+    }
     hideTooltip();
     const path = $(`#route-${zoneId}`);
     const marker = $('#traveller'); const ring = $('#traveller-ring');
@@ -252,7 +290,7 @@
         const destination = launchData?.targetUrl || (hub?.team?.id
           ? `${targetUrl}${targetUrl.includes('?') ? '&' : '?'}team=${encodeURIComponent(hub.team.id)}`
           : targetUrl);
-        window.open(destination, '_blank', 'noopener,noreferrer');
+        window.open(destination, '_blank');
         toast(`DISPATCHED TO ${zone.name} ↗ (ACTIVE IN NEW TAB)`);
       } catch (err) {
         if (err.message && err.message.includes('LOCKED')) {
@@ -261,7 +299,7 @@
           const urlWithTeam = hub?.team?.id
             ? `${targetUrl}${targetUrl.includes('?') ? '&' : '?'}team=${encodeURIComponent(hub.team.id)}`
             : targetUrl;
-          window.open(urlWithTeam, '_blank', 'noopener,noreferrer');
+          window.open(urlWithTeam, '_blank');
           toast(`DISPATCHED TO ${zone.name} ↗ (ACTIVE IN NEW TAB)`);
         }
       }
@@ -442,31 +480,46 @@
     $('#hud-zone-list').innerHTML = hub.zones.map((zone) => `<button class="hud-zone-row ${zone.state === 'cleared' ? 'cleared' : ''}" data-hud-zone="${escapeHTML(zone.id)}" style="--zone:${escapeHTML(zone.color)}" ${zone.unlocked ? '' : 'disabled'} aria-label="${escapeHTML(zone.name)}, ${escapeHTML(zone.state)}"><span class="zone-chip"></span><b>${escapeHTML(zone.name)}</b><span>${zone.state === 'locked' ? 'LOCKED' : zone.state === 'cleared' ? '✓ CLEAR' : 'ENTER ↗'}</span></button>`).join('');
     queryAll('.hud-zone-row').forEach((button) => button.addEventListener('click', () => travelToZone(button.dataset.hudZone)));
 
-    // Render earned dataset fragments — train.csv is locked until Purple Zone is unlocked
+    // Render earned dataset fragments — all datasets available when yellow, blue, orange, red are solved / purple unlocked
     const earned = hub.datasets || [];
-    const isPurpleUnlocked = !!hub.zones?.some((z) => z.id === 'purple' && z.unlocked);
+    const isPurpleUnlocked = !!hub.zones?.some((z) => z.id === 'purple' && (z.unlocked || z.state === 'cleared' || z.state === 'available' || z.state === 'in-progress')) || !!hub.progress?.complete;
+    const isYellowDone = earned.includes('community_final') || hub.zones?.some((z) => z.id === 'yellow' && z.state === 'cleared') || isPurpleUnlocked;
+    const isBlueDone = earned.includes('radio_final') || hub.zones?.some((z) => z.id === 'blue' && z.state === 'cleared') || isPurpleUnlocked;
+    const isOrangeDone = earned.includes('forensics_final') || hub.zones?.some((z) => z.id === 'orange' && z.state === 'cleared') || isPurpleUnlocked;
+    const isRedDone = earned.includes('research_final') || hub.zones?.some((z) => z.id === 'red' && z.state === 'cleared') || isPurpleUnlocked;
+
     const allDatasets = [
       { key: 'train', label: 'HISTORICAL TRAINING SET (79 COLS)', file: 'train.csv', unlocked: isPurpleUnlocked },
-      { key: 'community_final', label: 'YELLOW REWARD: COMMUNITY (20 COLS)', file: 'community_final.csv', unlocked: earned.includes('community_final') },
-      { key: 'radio_final', label: 'BLUE REWARD: RADIO COMMS (18 COLS)', file: 'radio_final.csv', unlocked: earned.includes('radio_final') },
-      { key: 'forensics_final', label: 'ORANGE REWARD: FORENSICS (18 COLS)', file: 'forensics_final.csv', unlocked: earned.includes('forensics_final') },
-      { key: 'research_final', label: 'RED REWARD: RESEARCH (25 COLS)', file: 'research_final.csv', unlocked: earned.includes('research_final') }
+      { key: 'sample_submission', label: 'BENCHMARK SUBMISSION TEMPLATE (120 ROWS)', file: 'sample_submission.csv', unlocked: isPurpleUnlocked },
+      { key: 'community_final', label: 'YELLOW REWARD: COMMUNITY (20 COLS)', file: 'community_final.csv', unlocked: isYellowDone },
+      { key: 'radio_final', label: 'BLUE REWARD: RADIO COMMS (18 COLS)', file: 'radio_final.csv', unlocked: isBlueDone },
+      { key: 'forensics_final', label: 'ORANGE REWARD: FORENSICS (18 COLS)', file: 'forensics_final.csv', unlocked: isOrangeDone },
+      { key: 'research_final', label: 'RED REWARD: RESEARCH (25 COLS)', file: 'research_final.csv', unlocked: isRedDone }
     ];
 
-    const unlockedCount = allDatasets.filter((d) => d.key !== 'train' && d.unlocked).length;
-    if ($('#datasets-count')) $('#datasets-count').textContent = `${String(unlockedCount).padStart(2, '0')} / 04`;
+    const sid = hub.sessionId || storageGet('tld_session_id');
+    const authQuery = hub.team?.id ? `?team=${encodeURIComponent(hub.team.id)}${sid ? `&sessionId=${encodeURIComponent(sid)}` : ''}` : '';
+
+    if ($('#datasets-count')) {
+      if (isPurpleUnlocked) {
+        $('#datasets-count').textContent = 'ALL 6 UNLOCKED';
+      } else {
+        const sectorCount = [isYellowDone, isBlueDone, isOrangeDone, isRedDone].filter(Boolean).length;
+        $('#datasets-count').textContent = `${String(sectorCount).padStart(2, '0')} / 04`;
+      }
+    }
 
     if ($('#hud-dataset-list')) {
       $('#hud-dataset-list').innerHTML = allDatasets.map((d) => {
         if (d.unlocked) {
-          return `<a href="/api/dataset/${d.key}" download="${d.file}" class="hud-zone-row cleared" style="--zone:#4ade80;text-decoration:none;display:flex;align-items:center;justify-content:space-between;padding:7px 10px;margin-bottom:4px;font-size:11px;background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.25);border-radius:4px;" title="Download verified dataset fragment">
+          return `<a href="/api/dataset/${d.key}${authQuery}" download="${d.file}" class="hud-zone-row cleared" style="--zone:#4ade80;text-decoration:none;display:flex;align-items:center;justify-content:space-between;padding:7px 10px;margin-bottom:4px;font-size:11px;background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.25);border-radius:4px;" title="Download verified dataset fragment: ${escapeHTML(d.file)}">
             <span style="font-weight:600;color:#f0fdf4;">◈ ${escapeHTML(d.file)}</span>
             <span style="color:#4ade80;font-weight:bold;letter-spacing:0.5px;">DOWNLOAD ⤓</span>
           </a>`;
         } else {
           return `<div class="hud-zone-row" style="opacity:0.4;display:flex;align-items:center;justify-content:space-between;padding:7px 10px;margin-bottom:4px;font-size:11px;border:1px dashed rgba(255,255,255,0.1);border-radius:4px;">
             <span style="color:#888;">◇ ${escapeHTML(d.file)}</span>
-            <span style="color:#666;font-size:10px;">${d.key === 'train' ? 'LOCKED · PURPLE' : 'LOCKED'}</span>
+            <span style="color:#666;font-size:10px;">${(d.key === 'train' || d.key === 'sample_submission') ? 'LOCKED · PURPLE' : 'LOCKED'}</span>
           </div>`;
         }
       }).join('');
@@ -680,9 +733,16 @@
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') refreshBootstrap({ animate: true });
     });
-    window.addEventListener('message', (event) => {
-      if (event.data?.type === 'ZONE_COMPLETED') {
-        refreshBootstrap({ animate: true });
+    window.addEventListener('message', async (event) => {
+      if (event.data?.type === 'ZONE_COMPLETED' || event.data?.type === 'ORANGE_ZONE_COMPLETED') {
+        const zId = event.data?.zoneId || 'orange';
+        if (zId === 'orange' && hub?.team?.id) {
+          try {
+            await api('/api/orange/complete', { method: 'POST', body: { teamId: hub.team.id } });
+          } catch (_) {}
+        }
+        await refreshBootstrap({ animate: true });
+        renderMapNodes();
         toast('SECTOR PROGRESS SYNCHRONIZED · VAULT UPDATED');
       }
       if (event.data?.type === 'PURPLE_ESCAPE_QUALIFIED') {

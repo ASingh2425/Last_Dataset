@@ -152,9 +152,31 @@ test('Two-Player Synchronized End-to-End Game Lifecycle: 3,100 pts & Permanent L
   assert.equal(p1BootPrePurple.ml.escapeUnlocked, false, 'Escape gate locked');
   assert.equal(p2BootPrePurple.ml.escapeUnlocked, false, 'Escape gate locked');
 
-  // 7. Player 1 downloads train.csv in Purple
-  const trainRes = await fetch(`${baseUrl}/api/dataset/train`, { headers: { Cookie: cookie1 } });
-  assert.equal(trainRes.status, 200, 'Player 1 can download train.csv in Purple zone');
+  // Verify all 4 sector datasets are in earned datasets
+  const allEarnedDatasets = ['community_final', 'radio_final', 'forensics_final', 'research_final'];
+  for (const ds of allEarnedDatasets) {
+    assert.ok(p1BootPrePurple.datasets.includes(ds), `Dataset ${ds} must be earned after clearing all 4 zones`);
+  }
+
+  // 7. Verify all 6 datasets are downloadable in Purple zone and on the central main page after clearing yellow, blue, orange, and red zones
+  const datasetsToVerify = [
+    'community_final',
+    'radio_final',
+    'forensics_final',
+    'research_final',
+    'train',
+    'sample_submission'
+  ];
+  for (const dsKey of datasetsToVerify) {
+    const dsRes = await fetch(`${baseUrl}/api/dataset/${dsKey}`, { headers: { Cookie: cookie1 } });
+    assert.equal(dsRes.status, 200, `Dataset ${dsKey} is downloadable via session cookie`);
+    const content = await dsRes.text();
+    assert.ok(content.length > 50, `Dataset ${dsKey} has non-empty content`);
+
+    // Also verify downloading via team query param as used when navigating to purple zone
+    const dsParamRes = await fetch(`${baseUrl}/api/dataset/${dsKey}?team=${p1BootPrePurple.team.id}`);
+    assert.equal(dsParamRes.status, 200, `Dataset ${dsKey} is downloadable via team parameter in Purple Zone`);
+  }
 
   // 8. Player 1 submits non-qualifying predictions (R² ~ 0.50 < 0.80)
   const lowEval = await fetch(`${baseUrl}/api/ml/evaluate`, {

@@ -123,7 +123,7 @@
 
   function updateDatasetLinks() {
     const lt = getStoredLaunchToken();
-    const tid = getStoredTeamId();
+    const tid = getStoredTeamId() || currentTeam?.id;
     if (!lt && !tid) return;
     const params = new URLSearchParams();
     if (lt) params.set('launchToken', lt);
@@ -134,6 +134,21 @@
       a.href = `${base}?${qs}`;
     });
   }
+
+  document.addEventListener('click', (e) => {
+    const a = e.target.closest('a[href^="/api/dataset/"]');
+    if (!a) return;
+    const lt = getStoredLaunchToken();
+    const tid = getStoredTeamId() || currentTeam?.id;
+    if (!lt && !tid) return;
+    try {
+      const url = new URL(a.href, window.location.origin);
+      if (lt && !url.searchParams.has('launchToken')) url.searchParams.set('launchToken', lt);
+      if (tid && !url.searchParams.has('team')) url.searchParams.set('team', tid);
+      a.href = url.pathname + '?' + url.searchParams.toString();
+    } catch (_) {}
+  }, { capture: true });
+
 
   async function api(url, options = {}) {
     const headers = Object.assign({}, options.headers || {});
@@ -200,6 +215,13 @@
       }
 
       currentTeam = data.team;
+      if (data.team?.id) {
+        try {
+          sessionStorage.setItem('manu_team_id', data.team.id);
+          localStorage.setItem('manu_team_id', data.team.id);
+        } catch (_) {}
+      }
+      updateDatasetLinks();
       const leader = data.player?.delegateId ? ` · OP ${data.player.delegateId}` : '';
       $('#team-display').innerHTML = `<strong>${escapeHtml(data.team.name)}</strong> (${escapeHtml(data.team.id)}${leader})`;
       $('#team-score').textContent = `${data.score?.total || 0} PTS`;
