@@ -2,6 +2,7 @@
  * =========================================================================
  * THE LAST DATASET — ORGANIZER COMMAND DECK (ADMIN CONTROLLER)
  * TechTatva 2026 | MAHE Manipal
+ * Authoritative production progression and evaluation dashboard.
  * =========================================================================
  */
 
@@ -18,9 +19,8 @@
     filters: {
       search: '',
       stage: 'all',
-      purple: 'all',
-      roster: 'all',
-      integrity: 'all'
+      studentType: 'all',
+      roster: 'all'
     },
     sort: {
       field: 'score',
@@ -74,14 +74,12 @@
     metricPointsAwarded: document.getElementById('metric-points-awarded'),
     metricPointsSub: document.getElementById('metric-points-sub'),
     metricMlSubmissions: document.getElementById('metric-ml-submissions'),
-    metricAlertsBadge: document.getElementById('metric-alerts-badge'),
 
     teamSearchInput: document.getElementById('team-search-input'),
     clearSearchBtn: document.getElementById('clear-search-btn'),
     filterStage: document.getElementById('filter-stage'),
-    filterPurple: document.getElementById('filter-purple'),
+    filterStudentType: document.getElementById('filter-student-type'),
     filterRoster: document.getElementById('filter-roster'),
-    filterIntegrity: document.getElementById('filter-integrity'),
     resetFiltersBtn: document.getElementById('reset-filters-btn'),
     teamsCountPill: document.getElementById('teams-count-pill'),
 
@@ -104,7 +102,11 @@
     modalInconsistenciesList: document.getElementById('modal-inconsistencies-list'),
     modalRosterCapPill: document.getElementById('modal-roster-cap-pill'),
     modalRosterList: document.getElementById('modal-roster-list'),
+    modalTeamPasscode: document.getElementById('modal-team-passcode'),
+    modalCopyPasscodeBtn: document.getElementById('modal-copy-passcode-btn'),
+    modalTeamCollege: document.getElementById('modal-team-college'),
     modalLeaderPhone: document.getElementById('modal-leader-phone'),
+    modalLeaderEmail: document.getElementById('modal-leader-email'),
     modalScoreTotalPill: document.getElementById('modal-score-total-pill'),
     modalScoreProgressFill: document.getElementById('modal-score-progress-fill'),
     modalScorePct: document.getElementById('modal-score-pct'),
@@ -132,10 +134,10 @@
   function formatTimeAgo(isoString) {
     if (!isoString) return 'No activity';
     const date = new Date(isoString);
-    if (Number.isNaN(date.getTime())) return 'Invalid date';
+    if (Number.isNaN(date.getTime())) return 'No activity';
 
     const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
-    if (seconds < 5) return 'Just now';
+    if (seconds < 10) return 'Just now';
     if (seconds < 60) return `${seconds}s ago`;
     const minutes = Math.floor(seconds / 60);
     if (minutes < 60) return `${minutes}m ago`;
@@ -149,7 +151,7 @@
     if (team.currentStage === 'completed' || team.score >= state.totalPointsPossible) return false;
     if (!team.lastActivityAt) return false;
     const diffHours = (Date.now() - new Date(team.lastActivityAt).getTime()) / (1000 * 60 * 60);
-    return diffHours >= 2;
+    return diffHours >= 2 && team.score > 0;
   }
 
   function updateClocks() {
@@ -302,7 +304,7 @@
         pointsAwarded: data.pointsAwarded !== undefined ? data.pointsAwarded : 0,
         totalMlSubmissions: data.totalMlSubmissions !== undefined ? data.totalMlSubmissions : 0
       };
-      state.totalPointsPossible = data.totalPointsPossible || 1510;
+      state.totalPointsPossible = data.totalPointsPossible || 3100;
 
       const now = new Date();
       if (els.lastRefreshedLabel) {
@@ -360,18 +362,6 @@
     if (els.metricCompletedTeams) els.metricCompletedTeams.textContent = m.completedTeams;
     if (els.metricPointsAwarded) els.metricPointsAwarded.textContent = m.pointsAwarded.toLocaleString() + ' PTS';
     if (els.metricMlSubmissions) els.metricMlSubmissions.textContent = m.totalMlSubmissions;
-
-    // Count teams with integrity anomalies
-    const anomalyTeams = state.teams.filter((t) => t.hasInconsistencies || (t.inconsistencies && t.inconsistencies.length > 0));
-    if (els.metricAlertsBadge) {
-      if (anomalyTeams.length > 0) {
-        els.metricAlertsBadge.className = 'badge badge-red';
-        els.metricAlertsBadge.textContent = `⚠ ${anomalyTeams.length} Team Anomaly Alerts`;
-      } else {
-        els.metricAlertsBadge.className = 'badge badge-green';
-        els.metricAlertsBadge.textContent = '✓ 0 Anomalies · All Rules Valid';
-      }
-    }
   }
 
   // --- FILTERING & SORTING ---
@@ -382,53 +372,44 @@
     // 1. Text Search
     if (q) {
       result = result.filter((t) => {
-        const idMatch = t.id.toLowerCase().includes(q);
+        const idMatch = (t.id || '').toLowerCase().includes(q);
         const nameMatch = (t.name || '').toLowerCase().includes(q);
         const leaderMatch = (t.leaderName || '').toLowerCase().includes(q);
+        const collegeMatch = (t.college || '').toLowerCase().includes(q);
         const memberMatch = (t.members || []).some(
-          (m) => (m.name || '').toLowerCase().includes(q) || (m.delegateId || '').toLowerCase().includes(q)
+          (m) => (m.name || '').toLowerCase().includes(q) ||
+                 (m.delegateId || '').toLowerCase().includes(q) ||
+                 (m.college || '').toLowerCase().includes(q) ||
+                 (m.regNo || '').toLowerCase().includes(q)
         );
-        return idMatch || nameMatch || leaderMatch || memberMatch;
+        return idMatch || nameMatch || leaderMatch || collegeMatch || memberMatch;
       });
     }
 
     // 2. Stage Filter
     if (state.filters.stage !== 'all') {
-      result = result.filter((t) => t.currentStage.toLowerCase() === state.filters.stage.toLowerCase());
+      result = result.filter((t) => (t.currentStage || '').toLowerCase() === state.filters.stage.toLowerCase());
     }
 
-    // 3. Purple Status Filter
-    if (state.filters.purple !== 'all') {
-      result = result.filter((t) => (t.purpleStatus || '').toLowerCase() === state.filters.purple.toLowerCase());
+    // 3. Student Type Filter
+    if (state.filters.studentType !== 'all') {
+      result = result.filter((t) => (t.studentType || '').toUpperCase() === state.filters.studentType.toUpperCase());
     }
 
     // 4. Roster Filter
     if (state.filters.roster !== 'all') {
-      if (state.filters.roster === 'cap-exceeded') {
-        result = result.filter((t) => (t.members || []).length > 2);
-      } else {
-        const expectedCount = Number(state.filters.roster);
-        result = result.filter((t) => (t.members || []).length === expectedCount);
-      }
+      const expectedCount = Number(state.filters.roster);
+      result = result.filter((t) => (t.members || []).length === expectedCount);
     }
 
-    // 5. Integrity Filter
-    if (state.filters.integrity !== 'all') {
-      if (state.filters.integrity === 'issues') {
-        result = result.filter((t) => t.hasInconsistencies);
-      } else if (state.filters.integrity === 'clean') {
-        result = result.filter((t) => !t.hasInconsistencies);
-      }
-    }
-
-    // 6. Sorting
+    // 5. Sorting
     result.sort((a, b) => {
       let valA, valB;
       const field = state.sort.field;
 
       if (field === 'id') {
-        valA = a.id;
-        valB = b.id;
+        valA = a.id || '';
+        valB = b.id || '';
         return state.sort.direction === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
       } else if (field === 'score') {
         valA = a.score || 0;
@@ -446,10 +427,6 @@
         valA = a.lastActivityAt ? new Date(a.lastActivityAt).getTime() : 0;
         valB = b.lastActivityAt ? new Date(b.lastActivityAt).getTime() : 0;
         return state.sort.direction === 'asc' ? valA - valB : valB - valA;
-      } else if (field === 'purple') {
-        valA = a.purpleStatus || '';
-        valB = b.purpleStatus || '';
-        return state.sort.direction === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
       }
       return 0;
     });
@@ -475,16 +452,15 @@
     els.tableEmptyState.hidden = true;
 
     const html = filtered.map((t) => {
-      // 1. Members check
+      // 1. Members
       const memberCount = (t.members || []).length;
       let memberBadgeClass = 'badge-subtle';
       if (memberCount === 2) memberBadgeClass = 'badge-green';
       else if (memberCount === 1) memberBadgeClass = 'badge-amber';
-      else if (memberCount > 2) memberBadgeClass = 'badge-red';
 
-      const memberNames = (t.members || [])
-        .map((m) => `${escapeHtml(m.name)}${m.isLeader ? ' <span class="member-leader-tag">(L)</span>' : ''}`)
-        .join(', ') || 'No registered players';
+      const memberDetailsFormatted = (t.members || [])
+        .map((m) => `${escapeHtml(m.name || 'Unnamed')} <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);">[${escapeHtml(m.delegateId || '—')}]</span>${m.isLeader ? ' <span class="member-leader-tag">(L)</span>' : ''}`)
+        .join('<br>') || '<span class="text-muted">No registered players</span>';
 
       // 2. Stage badge class
       let stageBadgeClass = 'badge-subtle';
@@ -496,34 +472,15 @@
       else if (t.currentStage === 'yellow') stageBadgeClass = 'badge-yellow';
       else if (t.currentStage === 'sanctuary') stageBadgeClass = 'badge-gold';
 
-      // 3. Stage track (S, Y, B, O, R, P)
-      const completedSet = new Set(t.completedStages || []);
-      const trackHtml = CANONICAL_ZONES.map((z) => {
-        const isCleared = completedSet.has(z.id);
-        const initial = z.id[0].toUpperCase();
-        return `<span class="track-pip ${isCleared ? `cleared-${z.id}` : ''}" title="${z.name}: ${isCleared ? 'CLEARED' : 'LOCKED'}">${initial}</span>`;
-      }).join('');
-
-      // 4. Purple status
-      let purpleBadgeClass = 'badge-subtle';
-      if (t.purpleStatus === 'completed') purpleBadgeClass = 'badge-green';
-      else if (t.purpleStatus === 'eligible') purpleBadgeClass = 'badge-purple';
-      else if (t.purpleStatus === 'processing') purpleBadgeClass = 'badge-amber';
-      else if (t.purpleStatus === 'locked') purpleBadgeClass = 'badge-red';
-
-      // 5. Last activity & stalled status
+      // 3. Last activity & stalled status
       const stalled = isTeamStalled(t);
       const activityRel = formatTimeAgo(t.lastActivityAt);
-      const activityExact = t.lastActivityAt ? new Date(t.lastActivityAt).toUTCString().slice(5, 22) : 'No timestamp';
+      const activityExact = t.lastActivityAt && !Number.isNaN(new Date(t.lastActivityAt).getTime())
+        ? new Date(t.lastActivityAt).toUTCString().slice(5, 22)
+        : '—';
 
-      // 6. Score progress bar
+      // 4. Score progress bar
       const scorePct = Math.min(100, Math.round(((t.score || 0) / state.totalPointsPossible) * 100));
-
-      // 7. Integrity badge
-      let integrityHtml = '<span class="badge badge-green" title="Integrity verified">✓ OK</span>';
-      if (t.hasInconsistencies) {
-        integrityHtml = `<span class="badge badge-red" title="${escapeHtml(t.inconsistencies.map((i) => i.message).join(' | '))}">⚠ ${t.inconsistencies.length} ISSUES</span>`;
-      }
 
       return `
         <tr data-team-id="${escapeHtml(t.id)}">
@@ -532,24 +489,22 @@
               <div class="team-id-row">
                 <span class="team-id-text">${escapeHtml(t.id)}</span>
                 <button class="copy-id-btn" data-copy="${escapeHtml(t.id)}" title="Copy Team ID">📋</button>
-                <span class="badge badge-subtle">${escapeHtml(t.studentType || 'REG')}</span>
+                <span class="badge ${t.studentType === 'NONMAHE' ? 'badge-blue' : 'badge-subtle'}">${escapeHtml(t.studentType || 'MAHE')}</span>
               </div>
               <span class="team-name-text">${escapeHtml(t.name)}</span>
+              ${t.college ? `<span style="font-size:10px;color:var(--text-muted);">${escapeHtml(t.college)}</span>` : ''}
             </div>
           </td>
           <td>
             <div class="members-cell">
-              <div><span class="badge ${memberBadgeClass}">${memberCount} / 2 Players</span></div>
-              <span class="member-names-list">${memberNames}</span>
+              <div><span class="badge ${memberBadgeClass}">${memberCount} ${memberCount === 1 ? 'Player (Solo)' : 'Players'}</span></div>
+              <div class="member-names-list" style="margin-top: 3px; line-height: 1.4;">${memberDetailsFormatted}</div>
             </div>
           </td>
           <td>
-            <span class="badge ${stageBadgeClass}">${escapeHtml(t.currentStage)}</span>
-          </td>
-          <td>
-            <div class="stage-track">
-              ${trackHtml}
-              <span class="count-pill" style="margin-left: 6px;">${t.completedStagesCount} / 6</span>
+            <div style="display:flex;flex-direction:column;gap:4px;">
+              <div><span class="badge ${stageBadgeClass}">${escapeHtml(t.currentStage)}</span></div>
+              <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);">${t.completedStagesCount || 0} / 6 Cleared</span>
             </div>
           </td>
           <td>
@@ -561,12 +516,6 @@
             </div>
           </td>
           <td>
-            <div style="display:flex;flex-direction:column;gap:3px;">
-              <div><span class="badge ${purpleBadgeClass}">${escapeHtml(t.purpleStatus)}</span></div>
-              ${t.ml?.bestR2 !== null && t.ml?.bestR2 !== undefined ? `<span style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);">Best R²: <b>${t.ml.bestR2.toFixed(4)}</b></span>` : ''}
-            </div>
-          </td>
-          <td>
             <div class="activity-cell">
               <div style="display:flex;align-items:center;gap:6px;">
                 <span class="activity-rel">${activityRel}</span>
@@ -574,9 +523,6 @@
               </div>
               <span class="activity-exact">${activityExact}</span>
             </div>
-          </td>
-          <td>
-            ${integrityHtml}
           </td>
           <td>
             <button class="btn btn-secondary btn-xs inspect-btn" data-team-id="${escapeHtml(t.id)}">Inspect →</button>
@@ -606,30 +552,33 @@
   function renderTeamDetailModal(team) {
     // Header
     els.modalTeamTitle.textContent = team.name || team.id;
-    els.modalTeamCreated.textContent = `Registered: ${team.createdAt ? new Date(team.createdAt).toUTCString() : 'Unknown'} · Team ID: ${team.id}`;
+    els.modalTeamCreated.textContent = `Team ID: ${team.id}${team.college ? ` · ${team.college}` : ''}`;
     els.modalTeamIdBadge.textContent = team.id;
     els.modalStudentTypeBadge.textContent = team.studentType || 'MAHE';
-    els.modalStageBadge.textContent = `CURRENT: ${team.currentStage.toUpperCase()}`;
+    els.modalStageBadge.textContent = `CURRENT: ${(team.currentStage || 'SANCTUARY').toUpperCase()}`;
 
-    // Integrity badge & Alert banner
+    // Integrity banner (only show if real anomalies exist)
     if (team.hasInconsistencies && team.inconsistencies.length > 0) {
-      els.modalIntegrityBadge.className = 'badge badge-red';
-      els.modalIntegrityBadge.textContent = `⚠ ${team.inconsistencies.length} PROGRESSION ANOMALIES`;
-
-      els.modalInconsistenciesList.innerHTML = team.inconsistencies
-        .map((i) => `<li><strong>[${escapeHtml(i.type)}]</strong> ${escapeHtml(i.message)}</li>`)
-        .join('');
-      els.modalInconsistenciesBanner.hidden = false;
+      if (els.modalIntegrityBadge) {
+        els.modalIntegrityBadge.hidden = false;
+        els.modalIntegrityBadge.className = 'badge badge-red';
+        els.modalIntegrityBadge.textContent = `⚠ ${team.inconsistencies.length} PROGRESSION ANOMALIES`;
+      }
+      if (els.modalInconsistenciesList) {
+        els.modalInconsistenciesList.innerHTML = team.inconsistencies
+          .map((i) => `<li><strong>[${escapeHtml(i.type)}]</strong> ${escapeHtml(i.message)}</li>`)
+          .join('');
+      }
+      if (els.modalInconsistenciesBanner) els.modalInconsistenciesBanner.hidden = false;
     } else {
-      els.modalIntegrityBadge.className = 'badge badge-green';
-      els.modalIntegrityBadge.textContent = '✓ INTEGRITY VERIFIED (RULES VALID)';
-      els.modalInconsistenciesBanner.hidden = true;
+      if (els.modalIntegrityBadge) els.modalIntegrityBadge.hidden = true;
+      if (els.modalInconsistenciesBanner) els.modalInconsistenciesBanner.hidden = true;
     }
 
     // Roster
     const members = team.members || [];
-    els.modalRosterCapPill.textContent = `${members.length} / 2 Players (${members.length <= 2 ? 'Cap Respected' : 'CAP EXCEEDED'})`;
-    els.modalRosterCapPill.className = members.length === 2 ? 'badge badge-green' : (members.length === 1 ? 'badge badge-amber' : 'badge badge-red');
+    els.modalRosterCapPill.textContent = `${members.length} / 2 Players (${members.length === 1 ? 'Solo' : 'Full Roster'})`;
+    els.modalRosterCapPill.className = members.length === 2 ? 'badge badge-green' : 'badge badge-amber';
 
     if (members.length > 0) {
       els.modalRosterList.innerHTML = members.map((m, idx) => `
@@ -637,13 +586,29 @@
           <div class="player-card-role">${m.isLeader ? '⭐ TEAM LEADER (P1)' : `PLAYER ${idx + 1}`}</div>
           <div class="player-card-name">${escapeHtml(m.name || 'Unnamed')}</div>
           <div class="player-card-id">DELEGATE ID: <b>${escapeHtml(m.delegateId || 'NONE')}</b></div>
+          ${m.regNo ? `<div style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);margin-top:2px;">REG NO: <b>${escapeHtml(m.regNo)}</b></div>` : ''}
+          ${m.college ? `<div style="font-size:10px;color:var(--text-muted);margin-top:2px;">${escapeHtml(m.college)}</div>` : ''}
         </div>
       `).join('');
     } else {
       els.modalRosterList.innerHTML = '<div class="text-muted" style="grid-column: 1 / -1; padding: 10px;">No registered players recorded for this team.</div>';
     }
 
-    els.modalLeaderPhone.textContent = team.leaderMobile || 'Not provided';
+    // Credentials block
+    if (els.modalTeamPasscode) els.modalTeamPasscode.textContent = team.passcode || '—';
+    if (els.modalTeamCollege) els.modalTeamCollege.textContent = team.college || '—';
+    if (els.modalLeaderPhone) els.modalLeaderPhone.textContent = team.leaderMobile || 'Not provided';
+    if (els.modalLeaderEmail) els.modalLeaderEmail.textContent = team.leaderEmail || 'Not provided';
+
+    if (els.modalCopyPasscodeBtn) {
+      els.modalCopyPasscodeBtn.onclick = () => {
+        if (!team.passcode) return;
+        navigator.clipboard?.writeText(team.passcode).then(() => {
+          els.modalCopyPasscodeBtn.textContent = '✓ Copied';
+          setTimeout(() => { els.modalCopyPasscodeBtn.textContent = '📋 Copy'; }, 1500);
+        });
+      };
+    }
 
     // Score breakdown
     const scorePct = Math.min(100, Math.round(((team.score || 0) / state.totalPointsPossible) * 100));
@@ -767,8 +732,11 @@
       'Team ID',
       'Team Name',
       'Student Type',
+      'College',
+      'Access Passcode',
       'Leader Name',
       'Leader Mobile',
+      'Leader Email',
       'Member 1 Name',
       'Member 1 ID',
       'Member 2 Name',
@@ -776,33 +744,26 @@
       'Member Count',
       'Current Stage',
       'Completed Stages Count',
-      'Completed Stages',
-      'Total Score',
-      'Sanctuary Status',
-      'Yellow Status',
-      'Blue Status',
-      'Orange Status',
-      'Red Status',
-      'Purple Status',
+      'Total Score (Max 3100)',
       'ML Submissions Used',
       'Best R2 Score',
       'Escape Unlocked',
-      'Last Activity UTC',
-      'Integrity Status',
-      'Inconsistencies'
+      'Last Activity UTC'
     ];
 
     const rows = state.teams.map((t) => {
       const m1 = t.members?.[0] || {};
       const m2 = t.members?.[1] || {};
-      const inconsistencies = (t.inconsistencies || []).map((i) => i.message).join(' | ');
 
       return [
         t.id,
         t.name || t.id,
         t.studentType || 'MAHE',
+        t.college || m1.college || '',
+        t.passcode || '',
         t.leaderName || m1.name || '',
-        t.leaderMobile || '',
+        t.leaderMobile || m1.phone || '',
+        t.leaderEmail || m1.email || '',
         m1.name || '',
         m1.delegateId || '',
         m2.name || '',
@@ -810,20 +771,11 @@
         (t.members || []).length,
         t.currentStage,
         t.completedStagesCount || 0,
-        (t.completedStages || []).join(';'),
         t.score || 0,
-        t.zones?.sanctuary?.status || 'locked',
-        t.zones?.yellow?.status || 'locked',
-        t.zones?.blue?.status || 'locked',
-        t.zones?.orange?.status || 'locked',
-        t.zones?.red?.status || 'locked',
-        t.purpleStatus || 'locked',
         t.ml?.submissionsUsed || 0,
         t.ml?.bestR2 !== null && t.ml?.bestR2 !== undefined ? t.ml.bestR2 : '',
         t.ml?.escapeUnlocked ? 'TRUE' : 'FALSE',
-        t.lastActivityAt || '',
-        t.hasInconsistencies ? 'ATTENTION REQUIRED' : 'VALID',
-        inconsistencies
+        t.lastActivityAt || ''
       ];
     });
 
@@ -908,8 +860,8 @@
       renderTable();
     });
 
-    els.filterPurple?.addEventListener('change', (e) => {
-      state.filters.purple = e.target.value;
+    els.filterStudentType?.addEventListener('change', (e) => {
+      state.filters.studentType = e.target.value;
       renderTable();
     });
 
@@ -918,20 +870,14 @@
       renderTable();
     });
 
-    els.filterIntegrity?.addEventListener('change', (e) => {
-      state.filters.integrity = e.target.value;
-      renderTable();
-    });
-
     // Reset Filters
     const resetAllFilters = () => {
-      state.filters = { search: '', stage: 'all', purple: 'all', roster: 'all', integrity: 'all' };
+      state.filters = { search: '', stage: 'all', studentType: 'all', roster: 'all' };
       if (els.teamSearchInput) els.teamSearchInput.value = '';
       if (els.clearSearchBtn) els.clearSearchBtn.hidden = true;
       if (els.filterStage) els.filterStage.value = 'all';
-      if (els.filterPurple) els.filterPurple.value = 'all';
+      if (els.filterStudentType) els.filterStudentType.value = 'all';
       if (els.filterRoster) els.filterRoster.value = 'all';
-      if (els.filterIntegrity) els.filterIntegrity.value = 'all';
       renderTable();
     };
 

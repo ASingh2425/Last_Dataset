@@ -4018,5 +4018,165 @@
         "learner_id": ""
       }
     ]
+  },
+  {
+    "id": "TECHTEAM99001",
+    "team_name": "Mock Team Alpha (Fresh)",
+    "team_leader_name": "Mock Operator Alpha",
+    "leader_mobile": "9999900001",
+    "leader_email": "mock.alpha@techtatva.org",
+    "passcode": "TLD-MOCK01",
+    "passcode_hash": "d6c558b758b65c1ca89ea90360c9bdb459488ccda89780bdad4c522fb4fcd82d",
+    "student_type": "MAHE",
+    "members": [
+      {
+        "delegate_id": "99001",
+        "name": "Mock Operator Alpha",
+        "is_leader": true,
+        "reg_no": "TEST26001",
+        "college": "Manipal Institute of Technology",
+        "phone": "9999900001",
+        "email": "mock.alpha1@techtatva.org",
+        "learner_id": ""
+      },
+      {
+        "delegate_id": "99002",
+        "name": "Mock Partner Alpha",
+        "is_leader": false,
+        "reg_no": "TEST26002",
+        "college": "Manipal Institute of Technology",
+        "phone": "9999900002",
+        "email": "mock.alpha2@techtatva.org",
+        "learner_id": ""
+      }
+    ]
+  },
+  {
+    "id": "TECHTEAM99002",
+    "team_name": "Mock Team Beta (Yellow Ready)",
+    "team_leader_name": "Mock Operator Beta",
+    "leader_mobile": "9999900003",
+    "leader_email": "mock.beta@techtatva.org",
+    "passcode": "TLD-MOCK02",
+    "passcode_hash": "86f2fe7612729acafa372ead0c03ca02968896f4efc2b25dfe18e0c1b0dcd2b9",
+    "student_type": "MAHE",
+    "members": [
+      {
+        "delegate_id": "99003",
+        "name": "Mock Operator Beta",
+        "is_leader": true,
+        "reg_no": "TEST26003",
+        "college": "Manipal Institute of Technology",
+        "phone": "9999900003",
+        "email": "mock.beta1@techtatva.org",
+        "learner_id": ""
+      },
+      {
+        "delegate_id": "99004",
+        "name": "Mock Partner Beta",
+        "is_leader": false,
+        "reg_no": "TEST26004",
+        "college": "Manipal Institute of Technology",
+        "phone": "9999900004",
+        "email": "mock.beta2@techtatva.org",
+        "learner_id": ""
+      }
+    ]
+  },
+  {
+    "id": "TECHTEAM99003",
+    "team_name": "Mock Team Gamma (Blue Ready)",
+    "team_leader_name": "Mock Operator Gamma",
+    "leader_mobile": "9999900005",
+    "leader_email": "mock.gamma@techtatva.org",
+    "passcode": "TLD-MOCK03",
+    "passcode_hash": "d45988b9b4fafa0129b6a4fb455c75dc02e1b8a71e64a9f2b302413710b279eb",
+    "student_type": "NONMAHE",
+    "members": [
+      {
+        "delegate_id": "99005",
+        "name": "Mock Operator Gamma",
+        "is_leader": true,
+        "reg_no": "TEST26005",
+        "college": "National Institute of Technology Karnataka",
+        "phone": "9999900005",
+        "email": "mock.gamma1@techtatva.org",
+        "learner_id": ""
+      },
+      {
+        "delegate_id": "99006",
+        "name": "Mock Partner Gamma",
+        "is_leader": false,
+        "reg_no": "TEST26006",
+        "college": "National Institute of Technology Karnataka",
+        "phone": "9999900006",
+        "email": "mock.gamma2@techtatva.org",
+        "learner_id": ""
+      }
+    ]
+  },
+  {
+    "id": "TECHTEAM99004",
+    "team_name": "Mock Team Delta (Purple Ready)",
+    "team_leader_name": "Mock Operator Delta",
+    "leader_mobile": "9999900007",
+    "leader_email": "mock.delta@techtatva.org",
+    "passcode": "TLD-MOCK04",
+    "passcode_hash": "b14142d44e6bd33595fb0ad7b8e1144838f278d82ad69df30b73e509a519a286",
+    "student_type": "MAHE",
+    "members": [
+      {
+        "delegate_id": "99007",
+        "name": "Mock Operator Delta",
+        "is_leader": true,
+        "reg_no": "TEST26007",
+        "college": "Manipal Institute of Technology",
+        "phone": "9999900007",
+        "email": "mock.delta1@techtatva.org",
+        "learner_id": ""
+      },
+      {
+        "delegate_id": "99008",
+        "name": "Mock Partner Delta",
+        "is_leader": false,
+        "reg_no": "TEST26008",
+        "college": "Manipal Institute of Technology",
+        "phone": "9999900008",
+        "email": "mock.delta2@techtatva.org",
+        "learner_id": ""
+      }
+    ]
+  },
+  {
+    "id": "TECHTEAM99005",
+    "team_name": "Mock Team Omega (Survivor Cleared)",
+    "team_leader_name": "Mock Operator Omega",
+    "leader_mobile": "9999900009",
+    "leader_email": "mock.omega@techtatva.org",
+    "passcode": "TLD-MOCK05",
+    "passcode_hash": "960010c4527eb18271c0e7a6b92349afecef9f4ec42eb7cc9eaeb6f5f6a36805",
+    "student_type": "MAHE",
+    "members": [
+      {
+        "delegate_id": "99009",
+        "name": "Mock Operator Omega",
+        "is_leader": true,
+        "reg_no": "TEST26009",
+        "college": "Manipal Institute of Technology",
+        "phone": "9999900009",
+        "email": "mock.omega1@techtatva.org",
+        "learner_id": ""
+      },
+      {
+        "delegate_id": "99010",
+        "name": "Mock Partner Omega",
+        "is_leader": false,
+        "reg_no": "TEST26010",
+        "college": "Manipal Institute of Technology",
+        "phone": "9999900010",
+        "email": "mock.omega2@techtatva.org",
+        "learner_id": ""
+      }
+    ]
   }
 ]

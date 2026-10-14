@@ -160,6 +160,175 @@ def main():
     assert len(all_passcodes) == 150, "Passcode collision detected!"
 
     # -------------------------------------------------------------------------
+    # PERMANENT MOCK PARTICIPANTS FOR SITE TESTING (DO NOT REMOVE UNLESS ASKED)
+    # -------------------------------------------------------------------------
+    mock_teams_data = [
+        {
+            'id': 'TECHTEAM99001',
+            'team_name': 'Mock Team Alpha (Fresh)',
+            'team_leader_name': 'Mock Operator Alpha',
+            'leader_mobile': '9999900001',
+            'leader_email': 'mock.alpha@techtatva.org',
+            'passcode': 'TLD-MOCK01',
+            'passcode_hash': hash_passcode('TLD-MOCK01'),
+            'student_type': 'MAHE',
+            'members': [
+                {
+                    'delegate_id': '99001',
+                    'name': 'Mock Operator Alpha',
+                    'is_leader': True,
+                    'reg_no': 'TEST26001',
+                    'college': 'Manipal Institute of Technology',
+                    'phone': '9999900001',
+                    'email': 'mock.alpha1@techtatva.org',
+                    'learner_id': ''
+                },
+                {
+                    'delegate_id': '99002',
+                    'name': 'Mock Partner Alpha',
+                    'is_leader': False,
+                    'reg_no': 'TEST26002',
+                    'college': 'Manipal Institute of Technology',
+                    'phone': '9999900002',
+                    'email': 'mock.alpha2@techtatva.org',
+                    'learner_id': ''
+                }
+            ]
+        },
+        {
+            'id': 'TECHTEAM99002',
+            'team_name': 'Mock Team Beta (Yellow Ready)',
+            'team_leader_name': 'Mock Operator Beta',
+            'leader_mobile': '9999900003',
+            'leader_email': 'mock.beta@techtatva.org',
+            'passcode': 'TLD-MOCK02',
+            'passcode_hash': hash_passcode('TLD-MOCK02'),
+            'student_type': 'MAHE',
+            'members': [
+                {
+                    'delegate_id': '99003',
+                    'name': 'Mock Operator Beta',
+                    'is_leader': True,
+                    'reg_no': 'TEST26003',
+                    'college': 'Manipal Institute of Technology',
+                    'phone': '9999900003',
+                    'email': 'mock.beta1@techtatva.org',
+                    'learner_id': ''
+                },
+                {
+                    'delegate_id': '99004',
+                    'name': 'Mock Partner Beta',
+                    'is_leader': False,
+                    'reg_no': 'TEST26004',
+                    'college': 'Manipal Institute of Technology',
+                    'phone': '9999900004',
+                    'email': 'mock.beta2@techtatva.org',
+                    'learner_id': ''
+                }
+            ]
+        },
+        {
+            'id': 'TECHTEAM99003',
+            'team_name': 'Mock Team Gamma (Blue Ready)',
+            'team_leader_name': 'Mock Operator Gamma',
+            'leader_mobile': '9999900005',
+            'leader_email': 'mock.gamma@techtatva.org',
+            'passcode': 'TLD-MOCK03',
+            'passcode_hash': hash_passcode('TLD-MOCK03'),
+            'student_type': 'NONMAHE',
+            'members': [
+                {
+                    'delegate_id': '99005',
+                    'name': 'Mock Operator Gamma',
+                    'is_leader': True,
+                    'reg_no': 'TEST26005',
+                    'college': 'National Institute of Technology Karnataka',
+                    'phone': '9999900005',
+                    'email': 'mock.gamma1@techtatva.org',
+                    'learner_id': ''
+                },
+                {
+                    'delegate_id': '99006',
+                    'name': 'Mock Partner Gamma',
+                    'is_leader': False,
+                    'reg_no': 'TEST26006',
+                    'college': 'National Institute of Technology Karnataka',
+                    'phone': '9999900006',
+                    'email': 'mock.gamma2@techtatva.org',
+                    'learner_id': ''
+                }
+            ]
+        },
+        {
+            'id': 'TECHTEAM99004',
+            'team_name': 'Mock Team Delta (Purple Ready)',
+            'team_leader_name': 'Mock Operator Delta',
+            'leader_mobile': '9999900007',
+            'leader_email': 'mock.delta@techtatva.org',
+            'passcode': 'TLD-MOCK04',
+            'passcode_hash': hash_passcode('TLD-MOCK04'),
+            'student_type': 'MAHE',
+            'members': [
+                {
+                    'delegate_id': '99007',
+                    'name': 'Mock Operator Delta',
+                    'is_leader': True,
+                    'reg_no': 'TEST26007',
+                    'college': 'Manipal Institute of Technology',
+                    'phone': '9999900007',
+                    'email': 'mock.delta1@techtatva.org',
+                    'learner_id': ''
+                },
+                {
+                    'delegate_id': '99008',
+                    'name': 'Mock Partner Delta',
+                    'is_leader': False,
+                    'reg_no': 'TEST26008',
+                    'college': 'Manipal Institute of Technology',
+                    'phone': '9999900008',
+                    'email': 'mock.delta2@techtatva.org',
+                    'learner_id': ''
+                }
+            ]
+        },
+        {
+            'id': 'TECHTEAM99005',
+            'team_name': 'Mock Team Omega (Survivor Cleared)',
+            'team_leader_name': 'Mock Operator Omega',
+            'leader_mobile': '9999900009',
+            'leader_email': 'mock.omega@techtatva.org',
+            'passcode': 'TLD-MOCK05',
+            'passcode_hash': hash_passcode('TLD-MOCK05'),
+            'student_type': 'MAHE',
+            'members': [
+                {
+                    'delegate_id': '99009',
+                    'name': 'Mock Operator Omega',
+                    'is_leader': True,
+                    'reg_no': 'TEST26009',
+                    'college': 'Manipal Institute of Technology',
+                    'phone': '9999900009',
+                    'email': 'mock.omega1@techtatva.org',
+                    'learner_id': ''
+                },
+                {
+                    'delegate_id': '99010',
+                    'name': 'Mock Partner Omega',
+                    'is_leader': False,
+                    'reg_no': 'TEST26010',
+                    'college': 'Manipal Institute of Technology',
+                    'phone': '9999900010',
+                    'email': 'mock.omega2@techtatva.org',
+                    'learner_id': ''
+                }
+            ]
+        }
+    ]
+    processed_teams.extend(mock_teams_data)
+    for mt in mock_teams_data:
+        total_participants += len(mt['members'])
+
+    # -------------------------------------------------------------------------
     # 1. WRITE STRUCTURED JSON ROSTER
     # -------------------------------------------------------------------------
     json_path = os.path.join(root_dir, 'data', 'teams_roster.json')
@@ -417,6 +586,36 @@ def main():
     sql_lines.append("SELECT id, 'yellow', 'locked', NULL FROM public.teams")
     sql_lines.append("ON CONFLICT (team_id, zone_id) DO NOTHING;")
     sql_lines.append("")
+    sql_lines.append("-- 4. Initialize progression for Mock Testing Teams")
+    sql_lines.append("INSERT INTO public.score_ledger (team_id, delegate_id, points, source_type, source_id, idempotency_key) VALUES")
+    sql_lines.append("('TECHTEAM99002', '99003', 100, 'sanctuary_complete', 'sanctuary-gate', 'TECHTEAM99002:sanctuary-gate'),")
+    sql_lines.append("('TECHTEAM99002', '99003', 200, 'zone_yellow_clear', 'yellow-zone', 'TECHTEAM99002:yellow-zone'),")
+    sql_lines.append("('TECHTEAM99003', '99005', 100, 'sanctuary_complete', 'sanctuary-gate', 'TECHTEAM99003:sanctuary-gate'),")
+    sql_lines.append("('TECHTEAM99003', '99005', 200, 'zone_yellow_clear', 'yellow-zone', 'TECHTEAM99003:yellow-zone'),")
+    sql_lines.append("('TECHTEAM99003', '99005', 400, 'zone_blue_clear', 'blue-zone', 'TECHTEAM99003:blue-zone'),")
+    sql_lines.append("('TECHTEAM99004', '99007', 100, 'sanctuary_complete', 'sanctuary-gate', 'TECHTEAM99004:sanctuary-gate'),")
+    sql_lines.append("('TECHTEAM99004', '99007', 200, 'zone_yellow_clear', 'yellow-zone', 'TECHTEAM99004:yellow-zone'),")
+    sql_lines.append("('TECHTEAM99004', '99007', 400, 'zone_blue_clear', 'blue-zone', 'TECHTEAM99004:blue-zone'),")
+    sql_lines.append("('TECHTEAM99004', '99007', 600, 'zone_orange_clear', 'orange-zone', 'TECHTEAM99004:orange-zone'),")
+    sql_lines.append("('TECHTEAM99004', '99007', 800, 'zone_red_clear', 'red-zone', 'TECHTEAM99004:red-zone')")
+    sql_lines.append("ON CONFLICT (idempotency_key) DO NOTHING;")
+    sql_lines.append("")
+    sql_lines.append("INSERT INTO public.zone_progress (team_id, zone_id, status, completed_at, unlocked_at) VALUES")
+    sql_lines.append("('TECHTEAM99002', 'sanctuary', 'completed', NOW(), NOW()),")
+    sql_lines.append("('TECHTEAM99002', 'yellow', 'completed', NOW(), NOW()),")
+    sql_lines.append("('TECHTEAM99002', 'blue', 'available', NULL, NOW()),")
+    sql_lines.append("('TECHTEAM99003', 'sanctuary', 'completed', NOW(), NOW()),")
+    sql_lines.append("('TECHTEAM99003', 'yellow', 'completed', NOW(), NOW()),")
+    sql_lines.append("('TECHTEAM99003', 'blue', 'completed', NOW(), NOW()),")
+    sql_lines.append("('TECHTEAM99003', 'orange', 'available', NULL, NOW()),")
+    sql_lines.append("('TECHTEAM99004', 'sanctuary', 'completed', NOW(), NOW()),")
+    sql_lines.append("('TECHTEAM99004', 'yellow', 'completed', NOW(), NOW()),")
+    sql_lines.append("('TECHTEAM99004', 'blue', 'completed', NOW(), NOW()),")
+    sql_lines.append("('TECHTEAM99004', 'orange', 'completed', NOW(), NOW()),")
+    sql_lines.append("('TECHTEAM99004', 'red', 'completed', NOW(), NOW()),")
+    sql_lines.append("('TECHTEAM99004', 'purple', 'available', NULL, NOW())")
+    sql_lines.append("ON CONFLICT (team_id, zone_id) DO UPDATE SET status = EXCLUDED.status, completed_at = EXCLUDED.completed_at, unlocked_at = EXCLUDED.unlocked_at;")
+    sql_lines.append("")
     sql_lines.append("COMMIT;")
     sql_lines.append("")
     
@@ -442,7 +641,7 @@ def main():
         "allowedIds": [t['id'] for t in processed_teams],
         "teamIdPattern": "^[A-Za-z0-9-]{3,32}$",
         "teamNamePattern": "^[\\p{L}\\p{N} .,'’_()-]{2,40}$",
-        "notes": f"Configured with 150 official TechTatva registered teams. IDs are normalized uppercase."
+        "notes": f"Configured with {len(processed_teams)} registered & mock testing teams. IDs are normalized uppercase."
     }
     with open(teams_config_path, 'w', encoding='utf-8') as f:
         json.dump(teams_config, f, indent=2)
@@ -471,6 +670,17 @@ def main():
             "leaderMobile": team['leader_mobile'],
             "leaderEmail": team['leader_email']
         }
+
+    # Initialize mock test progression in fallback store
+    if 'TECHTEAM99002' in clean_teams:
+        clean_teams['TECHTEAM99002']['completedZones'] = ['sanctuary', 'yellow']
+        clean_teams['TECHTEAM99002']['score'] = 300
+    if 'TECHTEAM99003' in clean_teams:
+        clean_teams['TECHTEAM99003']['completedZones'] = ['sanctuary', 'yellow', 'blue']
+        clean_teams['TECHTEAM99003']['score'] = 700
+    if 'TECHTEAM99004' in clean_teams:
+        clean_teams['TECHTEAM99004']['completedZones'] = ['sanctuary', 'yellow', 'blue', 'orange', 'red']
+        clean_teams['TECHTEAM99004']['score'] = 2100
 
     fallback_data = {
         "teams": clean_teams,
