@@ -7,6 +7,14 @@
 
 BEGIN;
 
+-- 0. Purge any non-official test/staging teams and reset official test state
+DELETE FROM public.teams WHERE id NOT LIKE 'TECHTEAM%';
+DELETE FROM public.score_ledger WHERE team_id NOT LIKE 'TECHTEAM%' OR team_id = 'TECHTEAM10328';
+DELETE FROM public.dataset_entitlements WHERE team_id NOT LIKE 'TECHTEAM%' OR team_id = 'TECHTEAM10328';
+DELETE FROM public.ml_submissions WHERE team_id NOT LIKE 'TECHTEAM%' OR team_id = 'TECHTEAM10328';
+DELETE FROM public.team_sessions WHERE team_id NOT LIKE 'TECHTEAM%' OR team_id = 'TECHTEAM10328';
+DELETE FROM public.zone_progress WHERE team_id = 'TECHTEAM10328';
+
 -- 1. Insert / Upsert 150 Teams
 INSERT INTO public.teams (id, team_name, team_leader_name, leader_mobile, passcode_hash, student_type, is_active)
 VALUES

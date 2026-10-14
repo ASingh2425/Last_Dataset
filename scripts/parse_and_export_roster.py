@@ -337,6 +337,14 @@ def main():
         "-- =========================================================================",
         "",
         "BEGIN;",
+        "",
+        "-- 0. Purge any non-official test/staging teams and reset official test state",
+        "DELETE FROM public.teams WHERE id NOT LIKE 'TECHTEAM%';",
+        "DELETE FROM public.score_ledger WHERE team_id NOT LIKE 'TECHTEAM%' OR team_id = 'TECHTEAM10328';",
+        "DELETE FROM public.dataset_entitlements WHERE team_id NOT LIKE 'TECHTEAM%' OR team_id = 'TECHTEAM10328';",
+        "DELETE FROM public.ml_submissions WHERE team_id NOT LIKE 'TECHTEAM%' OR team_id = 'TECHTEAM10328';",
+        "DELETE FROM public.team_sessions WHERE team_id NOT LIKE 'TECHTEAM%' OR team_id = 'TECHTEAM10328';",
+        "DELETE FROM public.zone_progress WHERE team_id = 'TECHTEAM10328';",
         ""
     ]
     
@@ -444,32 +452,28 @@ def main():
     # 6. UPDATE data/progress.json (Fallback Store)
     # -------------------------------------------------------------------------
     progress_path = os.path.join(root_dir, 'data', 'progress.json')
-    fallback_data = {"teams": {}, "sessions": {}, "submissions": []}
-    if os.path.exists(progress_path):
-        try:
-            with open(progress_path, 'r', encoding='utf-8') as f:
-                fallback_data = json.load(f)
-        except Exception:
-            pass
-            
-    if "teams" not in fallback_data:
-        fallback_data["teams"] = {}
-        
+    clean_teams = {}
     for team in processed_teams:
         tid = team['id']
-        existing = fallback_data["teams"].get(tid, {})
-        fallback_data["teams"][tid] = {
+        clean_teams[tid] = {
             "id": tid,
             "name": team["team_name"],
-            "createdAt": existing.get("createdAt", "2026-10-14T00:00:00.000Z"),
-            "solvedCtfs": existing.get("solvedCtfs", []),
-            "events": existing.get("events", []),
+            "createdAt": "2026-10-14T00:00:00.000Z",
+            "solvedCtfs": [],
+            "events": [],
             "members": [m['delegate_id'] for m in team['members']],
             "memberDetails": team['members'],
             "studentType": team['student_type'],
             "leaderName": team['team_leader_name'],
             "leaderMobile": team['leader_mobile']
         }
+
+    fallback_data = {
+        "teams": clean_teams,
+        "sessions": {},
+        "submissions": [],
+        "scores": {}
+    }
         
     with open(progress_path, 'w', encoding='utf-8') as f:
         json.dump(fallback_data, f, indent=2)
