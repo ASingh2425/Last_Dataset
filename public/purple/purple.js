@@ -454,9 +454,13 @@
     }
   }
 
+  let isTeamQualified = false;
+
   function showQualifiedState(info) {
+    isTeamQualified = true;
     renderScoreResult(info);
     showHelicopterActiveBanner(true);
+    checkQuotaState();
   }
 
   let cachedSubmissionsCount = 0;
@@ -467,16 +471,34 @@
     const quotaDisplay = $('#quota-display');
     const usedText = $('#quota-used-text');
     const remText = $('#quota-remaining-text');
+    const fileInput = $('#csv-file-input');
 
     if (usedText) usedText.textContent = cachedSubmissionsCount;
     if (remText) remText.textContent = `${Math.max(0, 10 - cachedSubmissionsCount)} ATTEMPTS REMAINING`;
+
+    if (isTeamQualified || (activeSession && activeSession.ml && activeSession.ml.escapeUnlocked)) {
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'QUALIFIED FOR EVACUATION — SUBMISSIONS PERMANENTLY LOCKED';
+      }
+      if (fileInput) fileInput.disabled = true;
+      if (exhaustedBanner) {
+        exhaustedBanner.hidden = false;
+        exhaustedBanner.innerHTML = '<strong>MISSION ACCOMPLISHED // PURPLE ZONE CLEARED (+1,000 PTS)</strong><p style="margin:4px 0 0;font-size:12px;">Your model satisfied the survival threshold. Transporter EX-09 is authorized. Per competition protocol, further submissions from your team are permanently locked.</p>';
+      }
+      if (quotaDisplay) quotaDisplay.classList.add('exhausted');
+      return;
+    }
 
     if (cachedSubmissionsCount >= 10) {
       if (btn) {
         btn.disabled = true;
         btn.textContent = 'SUBMISSION QUOTA REACHED (10/10 ATTEMPTS USED)';
       }
-      if (exhaustedBanner) exhaustedBanner.hidden = false;
+      if (exhaustedBanner) {
+        exhaustedBanner.hidden = false;
+        exhaustedBanner.innerHTML = '<strong>SUBMISSION LIMIT REACHED (10/10 ATTEMPTS)</strong><p style="margin:4px 0 0;font-size:12px;">All 10 allowed model submissions have been used. No further submissions are permitted.</p>';
+      }
       if (quotaDisplay) quotaDisplay.classList.add('exhausted');
     } else {
       if (exhaustedBanner) exhaustedBanner.hidden = true;
@@ -501,10 +523,12 @@
 
       // Check if team has already qualified in any past submission
       const bestQual = list.find((s) => s.qualifies_for_escape);
-      if (bestQual) {
+      if (bestQual || data.alreadyCompleted) {
+        isTeamQualified = true;
         updateGatePill(true);
         showHelicopterActiveBanner(true);
       }
+      checkQuotaState();
 
       if (!list.length) {
         tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#666;">NO SUBMISSIONS RECORDED YET.</td></tr>';
