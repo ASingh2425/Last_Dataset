@@ -27,7 +27,10 @@ const handler = async (req, res) => {
       try {
         const parsed = new URL(req.url, 'http://localhost');
         if (parsed.searchParams.has('_path')) {
-          targetUrl = parsed.searchParams.get('_path');
+          const basePath = parsed.searchParams.get('_path');
+          parsed.searchParams.delete('_path');
+          const remaining = parsed.searchParams.toString();
+          targetUrl = remaining ? `${basePath}?${remaining}` : basePath;
         }
       } catch (_) {}
     }
