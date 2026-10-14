@@ -158,271 +158,10 @@ def main():
     assert len(processed_teams) == 150, f"Expected 150 teams, got {len(processed_teams)}"
     assert total_participants == 222, f"Expected 222 participants, got {total_participants}"
     assert len(all_passcodes) == 150, "Passcode collision detected!"
+    # All 150 participant teams processed.
+    assert len(processed_teams) == 150
+    assert total_participants == 222
 
-    # -------------------------------------------------------------------------
-    # PERMANENT MOCK PARTICIPANTS FOR SITE TESTING (DO NOT REMOVE UNLESS ASKED)
-    # -------------------------------------------------------------------------
-    mock_teams_data = [
-        {
-            'id': 'TECHTEAM99001',
-            'team_name': 'Mock Team Alpha (Fresh)',
-            'team_leader_name': 'Mock Leader Alpha',
-            'leader_mobile': '9999900001',
-            'leader_email': 'mock.alpha@techtatva.org',
-            'passcode': 'TLD-MOCK01',
-            'passcode_hash': hash_passcode('TLD-MOCK01'),
-            'student_type': 'MAHE',
-            'members': [
-                {
-                    'delegate_id': '99001',
-                    'name': 'Mock Leader Alpha',
-                    'is_leader': True,
-                    'reg_no': 'TEST26001',
-                    'college': 'Manipal Institute of Technology',
-                    'phone': '9999900001',
-                    'email': 'mock.alpha1@techtatva.org',
-                    'learner_id': ''
-                },
-                {
-                    'delegate_id': '99002',
-                    'name': 'Mock Member Alpha',
-                    'is_leader': False,
-                    'reg_no': 'TEST26002',
-                    'college': 'Manipal Institute of Technology',
-                    'phone': '9999900002',
-                    'email': 'mock.alpha2@techtatva.org',
-                    'learner_id': ''
-                }
-            ]
-        },
-        {
-            'id': 'TECHTEAM99002',
-            'team_name': 'Mock Team Beta (Fresh)',
-            'team_leader_name': 'Mock Leader Beta',
-            'leader_mobile': '9999900003',
-            'leader_email': 'mock.beta@techtatva.org',
-            'passcode': 'TLD-MOCK02',
-            'passcode_hash': hash_passcode('TLD-MOCK02'),
-            'student_type': 'MAHE',
-            'members': [
-                {
-                    'delegate_id': '99003',
-                    'name': 'Mock Leader Beta',
-                    'is_leader': True,
-                    'reg_no': 'TEST26003',
-                    'college': 'Manipal Institute of Technology',
-                    'phone': '9999900003',
-                    'email': 'mock.beta1@techtatva.org',
-                    'learner_id': ''
-                },
-                {
-                    'delegate_id': '99004',
-                    'name': 'Mock Member Beta',
-                    'is_leader': False,
-                    'reg_no': 'TEST26004',
-                    'college': 'Manipal Institute of Technology',
-                    'phone': '9999900004',
-                    'email': 'mock.beta2@techtatva.org',
-                    'learner_id': ''
-                }
-            ]
-        },
-        {
-            'id': 'TECHTEAM99003',
-            'team_name': 'Mock Team Gamma (Fresh)',
-            'team_leader_name': 'Mock Leader Gamma',
-            'leader_mobile': '9999900005',
-            'leader_email': 'mock.gamma@techtatva.org',
-            'passcode': 'TLD-MOCK03',
-            'passcode_hash': hash_passcode('TLD-MOCK03'),
-            'student_type': 'NONMAHE',
-            'members': [
-                {
-                    'delegate_id': '99005',
-                    'name': 'Mock Leader Gamma',
-                    'is_leader': True,
-                    'reg_no': 'TEST26005',
-                    'college': 'National Institute of Technology Karnataka',
-                    'phone': '9999900005',
-                    'email': 'mock.gamma1@techtatva.org',
-                    'learner_id': ''
-                },
-                {
-                    'delegate_id': '99006',
-                    'name': 'Mock Member Gamma',
-                    'is_leader': False,
-                    'reg_no': 'TEST26006',
-                    'college': 'National Institute of Technology Karnataka',
-                    'phone': '9999900006',
-                    'email': 'mock.gamma2@techtatva.org',
-                    'learner_id': ''
-                }
-            ]
-        },
-        {
-            'id': 'TECHTEAM99004',
-            'team_name': 'Mock Team Delta (Fresh)',
-            'team_leader_name': 'Mock Leader Delta',
-            'leader_mobile': '9999900007',
-            'leader_email': 'mock.delta@techtatva.org',
-            'passcode': 'TLD-MOCK04',
-            'passcode_hash': hash_passcode('TLD-MOCK04'),
-            'student_type': 'MAHE',
-            'members': [
-                {
-                    'delegate_id': '99007',
-                    'name': 'Mock Leader Delta',
-                    'is_leader': True,
-                    'reg_no': 'TEST26007',
-                    'college': 'Manipal Institute of Technology',
-                    'phone': '9999900007',
-                    'email': 'mock.delta1@techtatva.org',
-                    'learner_id': ''
-                },
-                {
-                    'delegate_id': '99008',
-                    'name': 'Mock Member Delta',
-                    'is_leader': False,
-                    'reg_no': 'TEST26008',
-                    'college': 'Manipal Institute of Technology',
-                    'phone': '9999900008',
-                    'email': 'mock.delta2@techtatva.org',
-                    'learner_id': ''
-                }
-            ]
-        },
-        {
-            'id': 'TECHTEAM99005',
-            'team_name': 'Mock Team Epsilon (Fresh)',
-            'team_leader_name': 'Mock Leader Epsilon',
-            'leader_mobile': '9999900009',
-            'leader_email': 'mock.epsilon@techtatva.org',
-            'passcode': 'TLD-MOCK05',
-            'passcode_hash': hash_passcode('TLD-MOCK05'),
-            'student_type': 'MAHE',
-            'members': [
-                {
-                    'delegate_id': '99009',
-                    'name': 'Mock Leader Epsilon',
-                    'is_leader': True,
-                    'reg_no': 'TEST26009',
-                    'college': 'Manipal Institute of Technology',
-                    'phone': '9999900009',
-                    'email': 'mock.epsilon1@techtatva.org',
-                    'learner_id': ''
-                },
-                {
-                    'delegate_id': '99010',
-                    'name': 'Mock Member Epsilon',
-                    'is_leader': False,
-                    'reg_no': 'TEST26010',
-                    'college': 'Manipal Institute of Technology',
-                    'phone': '9999900010',
-                    'email': 'mock.epsilon2@techtatva.org',
-                    'learner_id': ''
-                }
-            ]
-        },
-        {
-            'id': 'TECHTEAM99006',
-            'team_name': 'Mock Team Zeta (Fresh)',
-            'team_leader_name': 'Mock Leader Zeta',
-            'leader_mobile': '9999900011',
-            'leader_email': 'mock.zeta@techtatva.org',
-            'passcode': 'TLD-MOCK06',
-            'passcode_hash': hash_passcode('TLD-MOCK06'),
-            'student_type': 'MAHE',
-            'members': [
-                {
-                    'delegate_id': '99011',
-                    'name': 'Mock Leader Zeta',
-                    'is_leader': True,
-                    'reg_no': 'TEST26011',
-                    'college': 'Manipal Institute of Technology',
-                    'phone': '9999900011',
-                    'email': 'mock.zeta1@techtatva.org',
-                    'learner_id': ''
-                },
-                {
-                    'delegate_id': '99012',
-                    'name': 'Mock Member Zeta',
-                    'is_leader': False,
-                    'reg_no': 'TEST26012',
-                    'college': 'Manipal Institute of Technology',
-                    'phone': '9999900012',
-                    'email': 'mock.zeta2@techtatva.org',
-                    'learner_id': ''
-                }
-            ]
-        },
-        {
-            'id': 'TECHTEAM99007',
-            'team_name': 'Mock Team Eta (Fresh)',
-            'team_leader_name': 'Mock Leader Eta',
-            'leader_mobile': '9999900013',
-            'leader_email': 'mock.eta@techtatva.org',
-            'passcode': 'TLD-MOCK07',
-            'passcode_hash': hash_passcode('TLD-MOCK07'),
-            'student_type': 'MAHE',
-            'members': [
-                {
-                    'delegate_id': '99013',
-                    'name': 'Mock Leader Eta',
-                    'is_leader': True,
-                    'reg_no': 'TEST26013',
-                    'college': 'Manipal Institute of Technology',
-                    'phone': '9999900013',
-                    'email': 'mock.eta1@techtatva.org',
-                    'learner_id': ''
-                },
-                {
-                    'delegate_id': '99014',
-                    'name': 'Mock Member Eta',
-                    'is_leader': False,
-                    'reg_no': 'TEST26014',
-                    'college': 'Manipal Institute of Technology',
-                    'phone': '9999900014',
-                    'email': 'mock.eta2@techtatva.org',
-                    'learner_id': ''
-                }
-            ]
-        },
-        {
-            'id': 'TECHTEAM99008',
-            'team_name': 'Mock Team Theta (Fresh)',
-            'team_leader_name': 'Mock Leader Theta',
-            'leader_mobile': '9999900015',
-            'leader_email': 'mock.theta@techtatva.org',
-            'passcode': 'TLD-MOCK08',
-            'passcode_hash': hash_passcode('TLD-MOCK08'),
-            'student_type': 'MAHE',
-            'members': [
-                {
-                    'delegate_id': '99015',
-                    'name': 'Mock Leader Theta',
-                    'is_leader': True,
-                    'reg_no': 'TEST26015',
-                    'college': 'Manipal Institute of Technology',
-                    'phone': '9999900015',
-                    'email': 'mock.theta1@techtatva.org',
-                    'learner_id': ''
-                },
-                {
-                    'delegate_id': '99016',
-                    'name': 'Mock Member Theta',
-                    'is_leader': False,
-                    'reg_no': 'TEST26016',
-                    'college': 'Manipal Institute of Technology',
-                    'phone': '9999900016',
-                    'email': 'mock.theta2@techtatva.org',
-                    'learner_id': ''
-                }
-            ]
-        }
-    ]
-    processed_teams.extend(mock_teams_data)
-    for mt in mock_teams_data:
-        total_participants += len(mt['members'])
 
     # -------------------------------------------------------------------------
     # 1. WRITE STRUCTURED JSON ROSTER
@@ -603,13 +342,13 @@ def main():
         "",
         "BEGIN;",
         "",
-        "-- 0. Purge any non-official test/staging teams and reset official test state",
-        "DELETE FROM public.teams WHERE id NOT LIKE 'TECHTEAM%';",
-        "DELETE FROM public.score_ledger WHERE team_id NOT LIKE 'TECHTEAM%' OR team_id = 'TECHTEAM10328';",
-        "DELETE FROM public.dataset_entitlements WHERE team_id NOT LIKE 'TECHTEAM%' OR team_id = 'TECHTEAM10328';",
-        "DELETE FROM public.ml_submissions WHERE team_id NOT LIKE 'TECHTEAM%' OR team_id = 'TECHTEAM10328';",
-        "DELETE FROM public.team_sessions WHERE team_id NOT LIKE 'TECHTEAM%' OR team_id = 'TECHTEAM10328';",
-        "DELETE FROM public.zone_progress WHERE team_id = 'TECHTEAM10328';",
+        "-- 0. Purge any non-official test/staging teams and any mock test IDs",
+        "DELETE FROM public.teams WHERE id NOT LIKE 'TECHTEAM%' OR id LIKE 'TECHTEAM99%';",
+        "DELETE FROM public.score_ledger WHERE team_id NOT LIKE 'TECHTEAM%' OR team_id LIKE 'TECHTEAM99%' OR team_id = 'TECHTEAM10328';",
+        "DELETE FROM public.dataset_entitlements WHERE team_id NOT LIKE 'TECHTEAM%' OR team_id LIKE 'TECHTEAM99%' OR team_id = 'TECHTEAM10328';",
+        "DELETE FROM public.ml_submissions WHERE team_id NOT LIKE 'TECHTEAM%' OR team_id LIKE 'TECHTEAM99%' OR team_id = 'TECHTEAM10328';",
+        "DELETE FROM public.team_sessions WHERE team_id NOT LIKE 'TECHTEAM%' OR team_id LIKE 'TECHTEAM99%' OR team_id = 'TECHTEAM10328';",
+        "DELETE FROM public.zone_progress WHERE team_id LIKE 'TECHTEAM99%' OR team_id = 'TECHTEAM10328';",
         ""
     ]
     
@@ -672,16 +411,17 @@ def main():
     sql_lines.append("    is_leader = EXCLUDED.is_leader;")
     sql_lines.append("")
     
-    # Zone progress initialization
-    sql_lines.append("-- 3. Initialize Zone Progress: Sanctuary AVAILABLE, Yellow LOCKED")
+    # Zone progress initialization for all 6 zones
+    sql_lines.append("-- 4. Initialize Zone Progress for all sectors")
     sql_lines.append("INSERT INTO public.zone_progress (team_id, zone_id, status, unlocked_at)")
     sql_lines.append("SELECT id, 'sanctuary', 'available', NOW() FROM public.teams")
     sql_lines.append("ON CONFLICT (team_id, zone_id) DO NOTHING;")
     sql_lines.append("")
-    sql_lines.append("INSERT INTO public.zone_progress (team_id, zone_id, status, unlocked_at)")
-    sql_lines.append("SELECT id, 'yellow', 'locked', NULL FROM public.teams")
-    sql_lines.append("ON CONFLICT (team_id, zone_id) DO NOTHING;")
-    sql_lines.append("")
+    for locked_zone in ['yellow', 'blue', 'orange', 'red', 'purple']:
+        sql_lines.append(f"INSERT INTO public.zone_progress (team_id, zone_id, status, unlocked_at)")
+        sql_lines.append(f"SELECT id, '{locked_zone}', 'locked', NULL FROM public.teams")
+        sql_lines.append(f"ON CONFLICT (team_id, zone_id) DO NOTHING;")
+        sql_lines.append("")
 
     sql_lines.append("COMMIT;")
     sql_lines.append("")
@@ -708,7 +448,7 @@ def main():
         "allowedIds": [t['id'] for t in processed_teams],
         "teamIdPattern": "^[A-Za-z0-9-]{3,32}$",
         "teamNamePattern": "^[\\p{L}\\p{N} .,'’_()-]{2,40}$",
-        "notes": f"Configured with {len(processed_teams)} registered & mock testing teams. IDs are normalized uppercase."
+        "notes": f"Configured with {len(processed_teams)} official registered participant teams. IDs are normalized uppercase."
     }
     with open(teams_config_path, 'w', encoding='utf-8') as f:
         json.dump(teams_config, f, indent=2)

@@ -150,17 +150,9 @@
     "TECHTEAM10582",
     "TECHTEAM11760",
     "TECHTEAM10877",
-    "TECHTEAM11214",
-    "TECHTEAM99001",
-    "TECHTEAM99002",
-    "TECHTEAM99003",
-    "TECHTEAM99004",
-    "TECHTEAM99005",
-    "TECHTEAM99006",
-    "TECHTEAM99007",
-    "TECHTEAM99008"
+    "TECHTEAM11214"
   ],
   "teamIdPattern": "^[A-Za-z0-9-]{3,32}$",
   "teamNamePattern": "^[\\p{L}\\p{N} .,'\u2019_()-]{2,40}$",
-  "notes": "Configured with 158 registered & mock testing teams. IDs are normalized uppercase."
+  "notes": "Configured with 150 official registered participant teams. IDs are normalized uppercase."
 }
