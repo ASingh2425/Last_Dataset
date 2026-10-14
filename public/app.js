@@ -369,7 +369,12 @@
     const text = $('#briefing-gate-text');
     const storylineBtn = $('#briefing-storyline-btn');
     const gateBtn = $('#briefing-gate-btn');
-    const currentTeam = hub?.team?.id || storageGet('tld_team_id');
+    let currentTeam = (hub?.team?.id || storageGet('tld_team_id') || '').trim().toUpperCase();
+    if (currentTeam === 'TECHTEAM10328') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlTeam = (urlParams.get('team') || urlParams.get('teamId') || '').trim().toUpperCase();
+      currentTeam = urlTeam !== 'TECHTEAM10328' ? urlTeam : '';
+    }
     const teamParam = currentTeam ? `?team=${encodeURIComponent(currentTeam)}` : '';
 
     if (storylineBtn) storylineBtn.href = `https://intro-stroyline.vercel.app/${teamParam}`;
@@ -606,7 +611,12 @@
     if (zoomFitBtn) zoomFitBtn.addEventListener('click', (e) => { e.stopPropagation(); zoom = 1.0; panX = 0; panY = 0; updateMapTransform(); toast('MAP VIEW RESET TO FIT ALL SECTORS'); });
     const sanctuary = $('#sanctuary');
     const openSanctuary = () => {
-      const activeTeam = hub?.team?.id || storageGet('tld_team_id');
+      let activeTeam = (hub?.team?.id || storageGet('tld_team_id') || '').trim().toUpperCase();
+      if (activeTeam === 'TECHTEAM10328') {
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlTeam = (urlParams.get('team') || urlParams.get('teamId') || '').trim().toUpperCase();
+        activeTeam = urlTeam !== 'TECHTEAM10328' ? urlTeam : '';
+      }
       const teamParam = activeTeam ? `?team=${encodeURIComponent(activeTeam)}` : '';
       window.open(`https://intro-stroyline.vercel.app/${teamParam}`, '_blank', 'noopener,noreferrer');
       toast('LAUNCHED INTRO STORYLINE & SANCTUARY IN NEW TAB ↗');
@@ -617,6 +627,30 @@
     sanctuary.addEventListener('keydown', (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openSanctuary(); } });
   }
   function setupEvents() {
+    const gateBtn = $('#briefing-gate-btn');
+    if (gateBtn) {
+      gateBtn.addEventListener('click', () => {
+        let tid = (hub?.team?.id || storageGet('tld_team_id') || '').trim().toUpperCase();
+        if (tid === 'TECHTEAM10328') {
+          const urlParams = new URLSearchParams(window.location.search);
+          const urlTeam = (urlParams.get('team') || urlParams.get('teamId') || '').trim().toUpperCase();
+          tid = urlTeam !== 'TECHTEAM10328' ? urlTeam : '';
+        }
+        if (tid) gateBtn.href = `https://last-dataset-sanc.vercel.app/?team=${encodeURIComponent(tid)}`;
+      });
+    }
+    const storylineBtn = $('#briefing-storyline-btn');
+    if (storylineBtn) {
+      storylineBtn.addEventListener('click', () => {
+        let tid = (hub?.team?.id || storageGet('tld_team_id') || '').trim().toUpperCase();
+        if (tid === 'TECHTEAM10328') {
+          const urlParams = new URLSearchParams(window.location.search);
+          const urlTeam = (urlParams.get('team') || urlParams.get('teamId') || '').trim().toUpperCase();
+          tid = urlTeam !== 'TECHTEAM10328' ? urlTeam : '';
+        }
+        if (tid) storylineBtn.href = `https://intro-stroyline.vercel.app/?team=${encodeURIComponent(tid)}`;
+      });
+    }
     $('#enter-sanctuary').addEventListener('click', async () => {
       if (hub?.authenticated) { await navigate('map', { saveView: false }); return; }
       if (window.TLDScene) window.TLDScene.lurch();
@@ -727,16 +761,39 @@
     }, 6300);
     try {
       const urlParams = new URLSearchParams(window.location.search);
-      const queryTeam = (urlParams.get('team') || urlParams.get('teamId') || '').trim();
-      if (queryTeam) storageSet('tld_team_id', queryTeam);
-      const activeTeam = queryTeam || storageGet('tld_team_id');
+      let queryTeam = (urlParams.get('team') || urlParams.get('teamId') || '').trim().toUpperCase();
+      let storedTeam = (storageGet('tld_team_id') || '').trim().toUpperCase();
+
+      if (storedTeam === 'TECHTEAM10328' && queryTeam !== 'TECHTEAM10328') {
+        storageRemove('tld_team_id');
+        storageRemove('tld_session_id');
+        storageRemove('tld_delegate_id');
+        storedTeam = '';
+      }
+
+      if (queryTeam) {
+        if (queryTeam !== 'TECHTEAM10328') {
+          storageSet('tld_team_id', queryTeam);
+        } else {
+          storageRemove('tld_team_id');
+        }
+      }
+      const activeTeam = (queryTeam && queryTeam !== 'TECHTEAM10328') ? queryTeam : (storedTeam !== 'TECHTEAM10328' ? storedTeam : '');
       const bootUrl = activeTeam ? `/api/bootstrap?team=${encodeURIComponent(activeTeam)}` : '/api/bootstrap';
+
+      updateBriefingGateStatus();
 
       const data = await api(bootUrl);
       if (data.authenticated) {
-        if (data.sessionId) storageSet('tld_session_id', data.sessionId);
-        if (data.team?.id) storageSet('tld_team_id', data.team.id);
-        if (data.player?.delegateId) storageSet('tld_delegate_id', data.player.delegateId);
+        if (data.team?.id === 'TECHTEAM10328' && (!queryTeam || queryTeam === 'TECHTEAM10328')) {
+          storageRemove('tld_team_id');
+          storageRemove('tld_session_id');
+          storageRemove('tld_delegate_id');
+        } else {
+          if (data.sessionId) storageSet('tld_session_id', data.sessionId);
+          if (data.team?.id) storageSet('tld_team_id', data.team.id);
+          if (data.player?.delegateId) storageSet('tld_delegate_id', data.player.delegateId);
+        }
         applyBootstrap(data);
         if (data.view?.screen === 'zone' && data.view.zoneId) await showZone(data.view.zoneId, { saveView: false, instant: true });
         else if (data.view?.screen === 'ctf' && data.view.ctfId) await openCtf(data.view.ctfId, { instant: true });
