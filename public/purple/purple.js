@@ -159,6 +159,8 @@
       const escapeUnlocked = !!(data.ml?.escapeUnlocked);
       updateGatePill(escapeUnlocked);
 
+      await loadSubmissions();
+
       if (escapeUnlocked) {
         showQualifiedState({
           r2Score: data.ml?.bestR2 || 1.0,
@@ -361,7 +363,10 @@
 
   function showHelicopterActiveBanner(show = true) {
     const banner = $('#helicopter-active-banner');
-    if (banner) banner.hidden = !show;
+    if (banner) {
+      banner.hidden = !show;
+      banner.style.display = show ? 'flex' : 'none';
+    }
   }
 
   function triggerHelicopterExtraction(result) {
@@ -544,6 +549,7 @@
       if (fileInput) fileInput.disabled = true;
       if (exhaustedBanner) {
         exhaustedBanner.hidden = false;
+        exhaustedBanner.style.display = 'flex';
         exhaustedBanner.innerHTML = '<strong>MISSION ACCOMPLISHED // PURPLE ZONE CLEARED (+1,000 PTS)</strong><p style="margin:4px 0 0;font-size:12px;">Your model satisfied the survival threshold. Transporter EX-09 is authorized. Per competition protocol, further submissions from your team are permanently locked.</p>';
       }
       if (quotaDisplay) quotaDisplay.classList.add('exhausted');
@@ -557,11 +563,15 @@
       }
       if (exhaustedBanner) {
         exhaustedBanner.hidden = false;
+        exhaustedBanner.style.display = 'flex';
         exhaustedBanner.innerHTML = '<strong>SUBMISSION LIMIT REACHED (10/10 ATTEMPTS)</strong><p style="margin:4px 0 0;font-size:12px;">All 10 allowed model submissions have been used. No further submissions are permitted.</p>';
       }
       if (quotaDisplay) quotaDisplay.classList.add('exhausted');
     } else {
-      if (exhaustedBanner) exhaustedBanner.hidden = true;
+      if (exhaustedBanner) {
+        exhaustedBanner.hidden = true;
+        exhaustedBanner.style.display = 'none';
+      }
       if (quotaDisplay) quotaDisplay.classList.remove('exhausted');
     }
   }
@@ -742,6 +752,7 @@
     setupUpload();
     setupHelicopterModal();
     setupCopyBtn();
+    checkQuotaState();
     initBootstrap();
 
     // Auto-refresh leaderboard periodically
