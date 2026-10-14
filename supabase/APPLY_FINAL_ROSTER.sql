@@ -169,7 +169,19 @@ ON CONFLICT (id) DO UPDATE SET
     is_active = TRUE,
     updated_at = NOW();
 
--- 2. Insert / Upsert 222 Team Members
+-- 2. Update check_team_member_cap trigger to exclude current delegate_id on upsert
+CREATE OR REPLACE FUNCTION public.check_team_member_cap()
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
+DECLARE v_member_count INTEGER;
+BEGIN
+    SELECT COUNT(*) INTO v_member_count FROM public.team_members WHERE team_id = NEW.team_id AND delegate_id <> NEW.delegate_id;
+    IF v_member_count >= 2 THEN
+        RAISE EXCEPTION 'TEAM_CAP_EXCEEDED: Maximum 2 players permitted per team.';
+    END IF;
+    RETURN NEW;
+END; $$;
+
+-- 3. Insert / Upsert 222 Team Members
 INSERT INTO public.team_members (delegate_id, team_id, member_name, is_leader)
 VALUES
 ('12993', 'TECHTEAM10923', 'ACHINT SINGH', TRUE),

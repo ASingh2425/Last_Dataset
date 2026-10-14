@@ -366,8 +366,20 @@ def main():
     sql_lines.append("    updated_at = NOW();")
     sql_lines.append("")
     
-    # Team members table inserts
-    sql_lines.append("-- 2. Insert / Upsert 222 Team Members")
+    # Team members table inserts with trigger hardening
+    sql_lines.append("-- 2. Update check_team_member_cap trigger to exclude current delegate_id on upsert")
+    sql_lines.append("CREATE OR REPLACE FUNCTION public.check_team_member_cap()")
+    sql_lines.append("RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$")
+    sql_lines.append("DECLARE v_member_count INTEGER;")
+    sql_lines.append("BEGIN")
+    sql_lines.append("    SELECT COUNT(*) INTO v_member_count FROM public.team_members WHERE team_id = NEW.team_id AND delegate_id <> NEW.delegate_id;")
+    sql_lines.append("    IF v_member_count >= 2 THEN")
+    sql_lines.append("        RAISE EXCEPTION 'TEAM_CAP_EXCEEDED: Maximum 2 players permitted per team.';")
+    sql_lines.append("    END IF;")
+    sql_lines.append("    RETURN NEW;")
+    sql_lines.append("END; $$;")
+    sql_lines.append("")
+    sql_lines.append("-- 3. Insert / Upsert 222 Team Members")
     sql_lines.append("INSERT INTO public.team_members (delegate_id, team_id, member_name, is_leader)")
     sql_lines.append("VALUES")
     
