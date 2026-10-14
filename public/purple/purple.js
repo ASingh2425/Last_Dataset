@@ -42,13 +42,72 @@
     }, 4000);
   }
 
+  // ------------------------------------------------------------------------
+  // AUTH & LAUNCH TOKEN CONTEXT
+  // ------------------------------------------------------------------------
+  try {
+    const p = new URLSearchParams(window.location.search);
+    const lt = (p.get('launchToken') || '').trim();
+    const tid = (p.get('team') || p.get('teamId') || '').trim();
+    if (lt) {
+      sessionStorage.setItem('tld_launch_token', lt);
+      localStorage.setItem('tld_launch_token', lt);
+    }
+    if (tid) {
+      sessionStorage.setItem('manu_team_id', tid);
+      localStorage.setItem('manu_team_id', tid);
+    }
+  } catch (_) {}
+
+  function getStoredLaunchToken() {
+    try {
+      const p = new URLSearchParams(window.location.search);
+      return (p.get('launchToken') || sessionStorage.getItem('tld_launch_token') || localStorage.getItem('tld_launch_token') || '').trim();
+    } catch (_) { return ''; }
+  }
+
+  function getStoredTeamId() {
+    try {
+      const p = new URLSearchParams(window.location.search);
+      return (p.get('team') || p.get('teamId') || sessionStorage.getItem('manu_team_id') || localStorage.getItem('manu_team_id') || '').trim();
+    } catch (_) { return ''; }
+  }
+
+  function updateDatasetLinks() {
+    const lt = getStoredLaunchToken();
+    const tid = getStoredTeamId();
+    if (!lt && !tid) return;
+    const params = new URLSearchParams();
+    if (lt) params.set('launchToken', lt);
+    if (tid) params.set('team', tid);
+    const qs = params.toString();
+    $$('a[href^="/api/dataset/"]').forEach((a) => {
+      const base = a.getAttribute('href').split('?')[0];
+      a.href = `${base}?${qs}`;
+    });
+  }
+
   async function api(url, options = {}) {
+    const headers = Object.assign({}, options.headers || {});
+    if (options.body !== undefined && !headers['Content-Type']) {
+      headers['Content-Type'] = 'application/json';
+    }
+    if (!headers['Accept']) {
+      headers['Accept'] = 'application/json';
+    }
+    const lt = getStoredLaunchToken();
+    if (lt && !headers['x-launch-token']) {
+      headers['x-launch-token'] = lt;
+    }
+    const tid = getStoredTeamId();
+    if (tid && !headers['x-team-id']) {
+      headers['x-team-id'] = tid;
+    }
+
     const res = await fetch(url, {
       method: options.method || 'GET',
       credentials: 'same-origin',
-      headers: options.body !== undefined
-        ? { 'Content-Type': 'application/json', 'Accept': 'application/json' }
-        : { 'Accept': 'application/json' },
+      headers,
       body: options.body !== undefined ? JSON.stringify(options.body) : undefined
     });
 
@@ -83,6 +142,7 @@
     try {
       const data = await api('/api/bootstrap');
       activeSession = data;
+      updateDatasetLinks();
       if (!data.authenticated) {
         $('#team-display').textContent = 'UNAUTHENTICATED SURVIVOR';
         $('#team-score').textContent = '0 PTS';
