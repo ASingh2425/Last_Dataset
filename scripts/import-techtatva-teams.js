@@ -5,15 +5,12 @@
  * =========================================================================
  *
  * Usage:
- *   node scripts/import-techtatva-teams.js --file ./participants.csv [--dry-run]
+ *   node scripts/import-techtatva-teams.js [--file ./data/teams_roster.json] [--remote https://last-dataset.vercel.app] [--dry-run]
  *
- * Supports columns from the official portal export:
- *   - "Team ID" (e.g. TECHTEAM10328)
- *   - "Delegate ID" (e.g. 12331)
- *   - "Team Leader" (e.g. GRANDHI GOWTHAM RAM SAI)
- *   - "Mobile No." (e.g. 8431863119)
- *   - "Student Type" (e.g. MAHE / NONMAHE)
- *   - "Team Type" (e.g. Team)
+ * Features:
+ *   - Supports JSON roster (data/teams_roster.json) or CSV exports
+ *   - Ingests into live Supabase directly or via --remote Admin API
+ *   - Syncs zone progress (Sanctuary AVAILABLE, Yellow LOCKED)
  */
 
 const fs = require('node:fs');
@@ -25,15 +22,6 @@ function hashPassword(passcode) {
   return crypto.createHash('sha256').update(String(passcode).trim(), 'utf8').digest('hex');
 }
 
-function generateRandomPasscode() {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  let code = 'TLD-';
-  for (let i = 0; i < 6; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return code;
-}
-
 function parseCSV(text) {
   const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
   if (!lines.length) return [];
@@ -42,7 +30,6 @@ function parseCSV(text) {
   const rows = [];
 
   for (let i = 1; i < lines.length; i++) {
-    // Simple CSV parser handling quotes
     const values = [];
     let insideQuotes = false;
     let currentVal = '';
@@ -73,118 +60,102 @@ async function main() {
   const args = process.argv.slice(2);
   const isDryRun = args.includes('--dry-run');
   const fileArgIndex = args.indexOf('--file');
-  const filePath = fileArgIndex !== -1 ? args[fileArgIndex + 1] : null;
+  const remoteArgIndex = args.indexOf('--remote');
+  const remoteUrl = remoteArgIndex !== -1 ? args[remoteArgIndex + 1] : null;
+
+  let filePath = fileArgIndex !== -1 ? args[fileArgIndex + 1] : null;
+  if (!filePath) {
+    const defaultJson = path.resolve(__dirname, '..', 'data', 'teams_roster.json');
+    if (fs.existsSync(defaultJson)) {
+      filePath = defaultJson;
+    }
+  }
 
   if (!filePath || !fs.existsSync(filePath)) {
-    console.error('Error: Please provide a valid CSV file path via --file <path>');
-    console.log('Example: node scripts/import-techtatva-teams.js --file ./participants.csv --dry-run');
+    console.error('Error: Please provide a valid file via --file <path>');
     process.exit(1);
   }
 
-  console.log(`Reading registration file: ${filePath}`);
-  const csvContent = fs.readFileSync(filePath, 'utf8');
-  const rawRows = parseCSV(csvContent);
+  console.log(`Reading roster file: ${filePath}`);
+  let rosterTeams = [];
 
-  console.log(`Parsed ${rawRows.length} participant records.`);
-  if (!rawRows.length) {
-    console.log('No records found in CSV.');
-    return;
-  }
+  if (filePath.endsWith('.json')) {
+    rosterTeams = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  } else {
+    const rawRows = parseCSV(fs.readFileSync(filePath, 'utf8'));
+    console.log(`Parsed ${rawRows.length} rows from CSV.`);
+    
+    // Group into teams
+    const teamsMap = new Map();
+    for (const row of rawRows) {
+      const teamId = String(row['team id'] || row['team_id'] || '').trim().toUpperCase();
+      const delegateId = String(row['delegate id'] || row['delegate_id'] || '').trim();
+      if (!teamId || !delegateId) continue;
 
-  // Find column keys flexibly
-  const sample = rawRows[0];
-  const teamIdKey = Object.keys(sample).find((k) => k.includes('team id') || k === 'team_id' || k === 'teamid');
-  const delegateIdKey = Object.keys(sample).find((k) => k.includes('delegate') || k === 'delegate_id');
-  const leaderKey = Object.keys(sample).find((k) => k.includes('leader') || k.includes('name'));
-  const mobileKey = Object.keys(sample).find((k) => k.includes('mobile') || k.includes('phone'));
-  const studentTypeKey = Object.keys(sample).find((k) => k.includes('student type') || k.includes('type'));
-  const passwordKey = Object.keys(sample).find((k) => k.includes('password') || k.includes('passcode') || k === 'pin' || k === 'pwd');
+      if (!teamsMap.has(teamId)) {
+        teamsMap.set(teamId, {
+          id: teamId,
+          team_name: String(row['team name'] || row['team_name'] || `Team ${teamId.replace(/^TECHTEAM/, '')}`).trim(),
+          team_leader_name: String(row['member name'] || row['team leader'] || '').trim(),
+          leader_mobile: String(row['mobile no.'] || row['mobile'] || '0000000000').trim(),
+          passcode: String(row['access passcode'] || row['password'] || '').trim(),
+          student_type: String(row['student type'] || 'MAHE').trim().toUpperCase(),
+          members: []
+        });
+      }
 
-  if (!teamIdKey || !delegateIdKey) {
-    console.error('Error: Could not locate required "Team ID" and "Delegate ID" columns in CSV header.');
-    console.log('Available columns:', Object.keys(sample));
-    process.exit(1);
-  }
+      const teamEntry = teamsMap.get(teamId);
+      const isLeader = String(row['role'] || '').includes('Leader') || String(row['is leader'] || '').toUpperCase() === 'YES';
+      if (isLeader) {
+        teamEntry.team_leader_name = String(row['member name'] || row['name'] || '').trim();
+        teamEntry.leader_mobile = String(row['mobile no.'] || row['mobile'] || '').trim();
+      }
 
-  // Group by Team ID (up to 2 players per team)
-  const teamsMap = new Map();
-
-  for (const row of rawRows) {
-    const rawTeamId = String(row[teamIdKey] || '').trim().toUpperCase();
-    const rawDelegateId = String(row[delegateIdKey] || '').trim();
-    if (!rawTeamId || !rawDelegateId) continue;
-
-    if (!teamsMap.has(rawTeamId)) {
-      const leaderName = leaderKey ? String(row[leaderKey] || '').trim() : 'Survivor Leader';
-      const mobile = mobileKey ? String(row[mobileKey] || '').trim() : '0000000000';
-      const studentType = studentTypeKey ? String(row[studentTypeKey] || '').trim() : 'MAHE';
-      const existingPasscode = passwordKey ? String(row[passwordKey] || '').trim() : '';
-
-      teamsMap.set(rawTeamId, {
-        teamId: rawTeamId,
-        teamName: `Team ${rawTeamId.replace(/^TECHTEAM/, '')}`,
-        leaderName,
-        mobile,
-        studentType,
-        passcode: existingPasscode || generateRandomPasscode(),
-        members: []
+      teamEntry.members.push({
+        delegate_id: delegateId,
+        name: String(row['member name'] || row['name'] || '').trim(),
+        is_leader: isLeader
       });
     }
 
-    const teamEntry = teamsMap.get(rawTeamId);
-    const memberName = leaderKey ? String(row[leaderKey] || '').trim() : `Player ${rawDelegateId}`;
-    teamEntry.members.push({
-      delegateId: rawDelegateId,
-      name: memberName,
-      isLeader: teamEntry.members.length === 0
-    });
-  }
-
-  console.log(`\nIdentified ${teamsMap.size} distinct teams across ${rawRows.length} participants.`);
-
-  // Export credentials file for event organizers
-  const exportArgIndex = args.indexOf('--export');
-  const exportPath = exportArgIndex !== -1 ? args[exportArgIndex + 1] : path.resolve(path.dirname(filePath), 'participants_with_passwords.csv');
-
-  const exportHeaders = ['Team ID', 'Team Name', 'Delegate ID', 'Member Name', 'Is Leader', 'Mobile No.', 'Student Type', 'Password'];
-  const exportLines = [exportHeaders.join(',')];
-
-  for (const team of teamsMap.values()) {
-    for (const member of team.members) {
-      exportLines.push([
-        `"${team.teamId}"`,
-        `"${team.teamName}"`,
-        `"${member.delegateId}"`,
-        `"${member.name.replace(/"/g, '""')}"`,
-        `"${member.isLeader ? 'YES' : 'NO'}"`,
-        `"${team.mobile}"`,
-        `"${team.studentType}"`,
-        `"${team.passcode}"`
-      ].join(','));
+    for (const t of teamsMap.values()) {
+      t.passcode_hash = hashPassword(t.passcode);
+      rosterTeams.push(t);
     }
   }
 
-  try {
-    fs.writeFileSync(exportPath, exportLines.join('\n'), 'utf8');
-    console.log(`\n[CREDENTIALS EXPORTED] Organizer credentials saved to: ${exportPath}`);
-  } catch (err) {
-    console.warn(`Could not export credentials CSV to ${exportPath}:`, err.message);
-  }
-
-  // Summary preview
-  console.log('\n--- PREVIEW OF TEAMS TO IMPORT ---');
-  let previewCount = 0;
-  for (const team of teamsMap.values()) {
-    if (previewCount++ < 5) {
-      console.log(`  Team: ${team.teamId} | Leader: ${team.leaderName} | Mobile: ${team.mobile} | Passcode: ${team.passcode} | Members (${team.members.length}): ${team.members.map(m => m.delegateId).join(', ')}`);
-    }
-  }
-  if (teamsMap.size > 5) {
-    console.log(`  ... and ${teamsMap.size - 5} more teams.`);
-  }
+  console.log(`Loaded ${rosterTeams.length} teams in roster.`);
 
   if (isDryRun) {
-    console.log('\n[DRY RUN COMPLETE] No changes were written to Supabase database.');
+    console.log('\n[DRY RUN COMPLETE] Roster verified. No changes written.');
+    return;
+  }
+
+  // Remote import via Admin API endpoint
+  if (remoteUrl) {
+    const targetUrl = remoteUrl.replace(/\/+$/, '') + '/api/admin/import-roster';
+    const adminKey = process.env.ADMIN_KEY || process.env.ADMIN_SECRET || 'tld-admin-master-key-2026';
+    console.log(`\nImporting to remote server: ${targetUrl}...`);
+
+    const res = await fetch(targetUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-admin-key': adminKey
+      },
+      body: JSON.stringify({ teams: rosterTeams })
+    });
+
+    const result = await res.json();
+    console.log('Remote response:', res.status, result);
+    return;
+  }
+
+  // Direct Supabase import if local client available
+  if (!supabase) {
+    console.warn('\nNotice: Local Supabase client not connected. You can:');
+    console.log('  1. Run against remote: node scripts/import-techtatva-teams.js --remote https://last-dataset.vercel.app');
+    console.log('  2. Apply SQL migration in Supabase SQL editor: supabase/APPLY_FINAL_ROSTER.sql');
     return;
   }
 
@@ -192,46 +163,43 @@ async function main() {
   let importedTeams = 0;
   let importedMembers = 0;
 
-  for (const team of teamsMap.values()) {
-    const passHash = hashPassword(team.passcode);
+  for (const team of rosterTeams) {
+    const passHash = team.passcode_hash || hashPassword(team.passcode);
 
-    // Upsert team
     const { error: teamErr } = await supabase.from('teams').upsert({
-      id: team.teamId,
-      team_name: team.teamName,
-      team_leader_name: team.leaderName,
-      leader_mobile: team.mobile,
+      id: team.id,
+      team_name: team.team_name,
+      team_leader_name: team.team_leader_name,
+      leader_mobile: team.leader_mobile,
       passcode_hash: passHash,
-      student_type: team.studentType,
+      student_type: team.student_type,
       is_active: true
     }, { onConflict: 'id' });
 
     if (teamErr) {
-      console.error(`Failed to insert team ${team.teamId}:`, teamErr.message);
+      console.error(`Failed to insert team ${team.id}:`, teamErr.message);
       continue;
     }
     importedTeams++;
 
-    // Insert members
-    for (const member of team.members) {
+    for (const member of (team.members || [])) {
       const { error: memErr } = await supabase.from('team_members').upsert({
-        delegate_id: member.delegateId,
-        team_id: team.teamId,
+        delegate_id: String(member.delegate_id).trim(),
+        team_id: team.id,
         member_name: member.name,
-        is_leader: member.isLeader
+        is_leader: !!member.is_leader
       }, { onConflict: 'delegate_id' });
 
       if (!memErr) importedMembers++;
     }
 
-    // Initialize sanctuary as available and yellow as locked for fair progression
     await supabase.from('zone_progress').upsert([
-      { team_id: team.teamId, zone_id: 'sanctuary', status: 'available', unlocked_at: new Date().toISOString() },
-      { team_id: team.teamId, zone_id: 'yellow', status: 'locked', unlocked_at: null }
+      { team_id: team.id, zone_id: 'sanctuary', status: 'available', unlocked_at: new Date().toISOString() },
+      { team_id: team.id, zone_id: 'yellow', status: 'locked', unlocked_at: null }
     ], { onConflict: 'team_id,zone_id' });
   }
 
-  console.log(`\nSUCCESSFULLY IMPORTED: ${importedTeams} teams and ${importedMembers} members into live database!`);
+  console.log(`\nSUCCESSFULLY IMPORTED: ${importedTeams} teams and ${importedMembers} members into database!`);
 }
 
 main().catch(console.error);

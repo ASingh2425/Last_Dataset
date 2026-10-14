@@ -31,6 +31,10 @@
   padding: 0;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 body {
   background-color: var(--bg-dark);
   color: var(--text-main);
@@ -895,6 +899,10 @@ tr.current-team td {
   gap: 10px;
 }
 
+.quota-banner[hidden] {
+  display: none !important;
+}
+
 /* --------------------------------------------------------------------------
    PERSISTENT HELICOPTER EXTRACTION NOTIFICATION BANNER
    -------------------------------------------------------------------------- */
@@ -910,6 +918,10 @@ tr.current-team td {
   justify-content: space-between;
   gap: 16px;
   animation: extractionPulseGlow 3s infinite ease-in-out;
+}
+
+.helicopter-active-banner[hidden] {
+  display: none !important;
 }
 
 @keyframes extractionPulseGlow {
