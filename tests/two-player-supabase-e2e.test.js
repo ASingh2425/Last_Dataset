@@ -11,7 +11,7 @@
  * 4. Dataset entitlement checks and download validation.
  * 5. Concurrent qualifying ML submissions from both teammates: exactly one awards points.
  * 6. Permanent post-qualification lockout applies across both teammate sessions.
- * 7. Score ledger inspection: strictly 6 rows, exactly 3,100 points.
+ * 7. Score ledger inspection: strictly 6 rows, exactly 1,510 points.
  * 8. Safe teardown in finally block.
  */
 
@@ -186,13 +186,15 @@ test('Two-Player Synchronized Supabase E2E: Sessions, Concurrency, 3,100 Pts & P
     const ds1Res = await fetch(`${baseUrl}/api/dataset/community_final`, { headers: { Cookie: cookie1 } });
     assert.equal(ds1Res.status, 200, 'Player 1 can download entitled community_final');
 
-    // 8. Player 1 completes Blue (400 pts)
-    const bSolve = await fetch(`${baseUrl}/api/dev/solve`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Cookie: cookie1 },
-      body: JSON.stringify({ ctfId: 'blue-01' })
-    });
-    assert.equal(bSolve.status, 200, 'Blue CTF solve must succeed');
+    // 8. Player 1 completes Blue (4 CTFs, 400 pts)
+    for (const ctfId of ['blue-zone-ctf-01', 'blue-zone-ctf-02', 'blue-zone-ctf-03', 'blue-zone-ctf-04']) {
+      const bSolve = await fetch(`${baseUrl}/api/dev/solve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Cookie: cookie1 },
+        body: JSON.stringify({ ctfId })
+      });
+      assert.equal(bSolve.status, 200, `Blue CTF ${ctfId} solve must succeed`);
+    }
 
     const blueRes = await fetch(`${baseUrl}/api/zone/complete`, {
       method: 'POST',

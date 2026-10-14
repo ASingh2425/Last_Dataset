@@ -98,6 +98,7 @@ async function main() {
   const leaderKey = Object.keys(sample).find((k) => k.includes('leader') || k.includes('name'));
   const mobileKey = Object.keys(sample).find((k) => k.includes('mobile') || k.includes('phone'));
   const studentTypeKey = Object.keys(sample).find((k) => k.includes('student type') || k.includes('type'));
+  const passwordKey = Object.keys(sample).find((k) => k.includes('password') || k.includes('passcode') || k === 'pin' || k === 'pwd');
 
   if (!teamIdKey || !delegateIdKey) {
     console.error('Error: Could not locate required "Team ID" and "Delegate ID" columns in CSV header.');
@@ -117,6 +118,7 @@ async function main() {
       const leaderName = leaderKey ? String(row[leaderKey] || '').trim() : 'Survivor Leader';
       const mobile = mobileKey ? String(row[mobileKey] || '').trim() : '0000000000';
       const studentType = studentTypeKey ? String(row[studentTypeKey] || '').trim() : 'MAHE';
+      const existingPasscode = passwordKey ? String(row[passwordKey] || '').trim() : '';
 
       teamsMap.set(rawTeamId, {
         teamId: rawTeamId,
@@ -124,7 +126,7 @@ async function main() {
         leaderName,
         mobile,
         studentType,
-        passcode: generateRandomPasscode(),
+        passcode: existingPasscode || generateRandomPasscode(),
         members: []
       });
     }
@@ -139,6 +141,35 @@ async function main() {
   }
 
   console.log(`\nIdentified ${teamsMap.size} distinct teams across ${rawRows.length} participants.`);
+
+  // Export credentials file for event organizers
+  const exportArgIndex = args.indexOf('--export');
+  const exportPath = exportArgIndex !== -1 ? args[exportArgIndex + 1] : path.resolve(path.dirname(filePath), 'participants_with_passwords.csv');
+
+  const exportHeaders = ['Team ID', 'Team Name', 'Delegate ID', 'Member Name', 'Is Leader', 'Mobile No.', 'Student Type', 'Password'];
+  const exportLines = [exportHeaders.join(',')];
+
+  for (const team of teamsMap.values()) {
+    for (const member of team.members) {
+      exportLines.push([
+        `"${team.teamId}"`,
+        `"${team.teamName}"`,
+        `"${member.delegateId}"`,
+        `"${member.name.replace(/"/g, '""')}"`,
+        `"${member.isLeader ? 'YES' : 'NO'}"`,
+        `"${team.mobile}"`,
+        `"${team.studentType}"`,
+        `"${team.passcode}"`
+      ].join(','));
+    }
+  }
+
+  try {
+    fs.writeFileSync(exportPath, exportLines.join('\n'), 'utf8');
+    console.log(`\n[CREDENTIALS EXPORTED] Organizer credentials saved to: ${exportPath}`);
+  } catch (err) {
+    console.warn(`Could not export credentials CSV to ${exportPath}:`, err.message);
+  }
 
   // Summary preview
   console.log('\n--- PREVIEW OF TEAMS TO IMPORT ---');

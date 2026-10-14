@@ -134,13 +134,16 @@ test('Staging Acceptance: Score Ledger Ownership, Permission Boundaries & 3,100-
     assert.equal(yellow.ok, true);
 
     // 3. Blue (400 pts)
-    await supabaseStore.completeChallenge({
-      teamId,
-      delegateId: leaderId,
-      zoneId: 'blue',
-      challengeId: 'blue-01',
-      allZoneChallenges: ['blue-01']
-    });
+    const blueCtfs = ['blue-zone-ctf-01', 'blue-zone-ctf-02', 'blue-zone-ctf-03', 'blue-zone-ctf-04'];
+    for (const ctfId of blueCtfs) {
+      await supabaseStore.completeChallenge({
+        teamId,
+        delegateId: leaderId,
+        zoneId: 'blue',
+        challengeId: ctfId,
+        allZoneChallenges: blueCtfs
+      });
+    }
     const blue = await supabaseStore.completeZoneDirect({ teamId, delegateId: leaderId, zoneId: 'blue' });
     assert.equal(blue.ok, true);
 
@@ -187,7 +190,7 @@ test('Staging Acceptance: Score Ledger Ownership, Permission Boundaries & 3,100-
     assert.equal(purpleFinal.zoneCompleted, true);
 
     // -----------------------------------------------------------------------
-    // ASSERTION 4: Direct Inspection of Score Ledger (Strict 6 rows, 3,100 pts)
+    // ASSERTION 4: Direct Inspection of Score Ledger (Strict 6 rows, 1,510 pts)
     // -----------------------------------------------------------------------
     console.log('Directly auditing score_ledger in database...');
     const { data: ledgerRows, error: ledgerErr } = await supabase

@@ -279,10 +279,52 @@ test('Security Audit 6: Purple zone completion without qualifying R2 >= 0.80 ML 
   const yellowIncompleteJson = await yellowIncompleteRes.json();
   assert.equal(yellowIncompleteJson.error, 'CHALLENGES_INCOMPLETE');
 
-  // Solve each zone's required challenge and clear the sector legitimately
+  // Solve Yellow
+  await fetch(`${baseUrl}/api/dev/solve`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Cookie: cookie },
+    body: JSON.stringify({ ctfId: 'yellow-01' })
+  });
+  await fetch(`${baseUrl}/api/zone/complete`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Cookie: cookie },
+    body: JSON.stringify({ zoneId: 'yellow' })
+  });
+
+  // Verify Blue requires all 4 CTFs: solve only 3 of 4
+  for (const ctfId of ['blue-zone-ctf-01', 'blue-zone-ctf-02', 'blue-zone-ctf-03']) {
+    const sRes = await fetch(`${baseUrl}/api/dev/solve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Cookie: cookie },
+      body: JSON.stringify({ ctfId })
+    });
+    assert.equal(sRes.status, 200, `Solving ${ctfId} must succeed`);
+  }
+  const blueIncomplete = await fetch(`${baseUrl}/api/zone/complete`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Cookie: cookie },
+    body: JSON.stringify({ zoneId: 'blue' })
+  });
+  assert.equal(blueIncomplete.status, 403, 'Blue must remain incomplete when only 3 of 4 CTFs are solved');
+  const blueIncompleteJson = await blueIncomplete.json();
+  assert.equal(blueIncompleteJson.error, 'CHALLENGES_INCOMPLETE');
+
+  // Solve 4th CTF and clear Blue
+  const s4Res = await fetch(`${baseUrl}/api/dev/solve`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Cookie: cookie },
+    body: JSON.stringify({ ctfId: 'blue-zone-ctf-04' })
+  });
+  assert.equal(s4Res.status, 200, 'Solving blue-zone-ctf-04 must succeed');
+  const blueClear = await fetch(`${baseUrl}/api/zone/complete`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Cookie: cookie },
+    body: JSON.stringify({ zoneId: 'blue' })
+  });
+  assert.equal(blueClear.status, 200, 'Blue must clear after all 4 CTFs are solved');
+
+  // Clear Orange and Red
   for (const [zone, ctfId] of [
-    ['yellow', 'yellow-01'],
-    ['blue', 'blue-01'],
     ['orange', 'orange-01'],
     ['red', 'red-01']
   ]) {
@@ -425,22 +467,24 @@ test('Security Audit 9: Canonical 3,100 points audit: total score matches exactl
     body: JSON.stringify({ zoneId: 'sanctuary' })
   });
 
-  // 2. Solve & Clear Yellow (200), Blue (400), Orange (600), Red (800)
-  for (const [zone, ctf] of [
-    ['yellow', 'yellow-01'],
-    ['blue', 'blue-01'],
-    ['orange', 'orange-01'],
-    ['red', 'red-01']
+  // 2. Solve & Clear Yellow (200), Blue (4x100 = 400), Orange (600), Red (800)
+  for (const item of [
+    { zone: 'yellow', ctfs: ['yellow-01'] },
+    { zone: 'blue', ctfs: ['blue-zone-ctf-01', 'blue-zone-ctf-02', 'blue-zone-ctf-03', 'blue-zone-ctf-04'] },
+    { zone: 'orange', ctfs: ['orange-01'] },
+    { zone: 'red', ctfs: ['red-01'] }
   ]) {
-    await fetch(`${baseUrl}/api/dev/solve`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Cookie: cookie },
-      body: JSON.stringify({ ctfId: ctf })
-    });
+    for (const ctf of item.ctfs) {
+      await fetch(`${baseUrl}/api/dev/solve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Cookie: cookie },
+        body: JSON.stringify({ ctfId: ctf })
+      });
+    }
     await fetch(`${baseUrl}/api/zone/complete`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Cookie: cookie },
-      body: JSON.stringify({ zoneId: zone })
+      body: JSON.stringify({ zoneId: item.zone })
     });
   }
 
@@ -500,22 +544,24 @@ test('Security Audit 11: End-to-end qualifying ML submission -> permanent lock -
     body: JSON.stringify({ zoneId: 'sanctuary' })
   });
 
-  // 2. Solve & Clear Yellow (200), Blue (400), Orange (600), Red (800)
-  for (const [zone, ctf] of [
-    ['yellow', 'yellow-01'],
-    ['blue', 'blue-01'],
-    ['orange', 'orange-01'],
-    ['red', 'red-01']
+  // 2. Solve & Clear Yellow (200), Blue (4x100 = 400), Orange (600), Red (800)
+  for (const item of [
+    { zone: 'yellow', ctfs: ['yellow-01'] },
+    { zone: 'blue', ctfs: ['blue-zone-ctf-01', 'blue-zone-ctf-02', 'blue-zone-ctf-03', 'blue-zone-ctf-04'] },
+    { zone: 'orange', ctfs: ['orange-01'] },
+    { zone: 'red', ctfs: ['red-01'] }
   ]) {
-    await fetch(`${baseUrl}/api/dev/solve`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Cookie: cookie },
-      body: JSON.stringify({ ctfId: ctf })
-    });
+    for (const ctf of item.ctfs) {
+      await fetch(`${baseUrl}/api/dev/solve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Cookie: cookie },
+        body: JSON.stringify({ ctfId: ctf })
+      });
+    }
     await fetch(`${baseUrl}/api/zone/complete`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Cookie: cookie },
-      body: JSON.stringify({ zoneId: zone })
+      body: JSON.stringify({ zoneId: item.zone })
     });
   }
 
@@ -638,4 +684,54 @@ test('Security Audit 13: CORS allowlist strictly rejects unapproved origins incl
   assert.equal(approvedRes.headers.get('access-control-allow-origin'), 'https://purplezone-frontend.vercel.app');
   assert.equal(approvedRes.headers.get('access-control-allow-credentials'), 'true');
 });
+
+test('Security Audit 14: Trusted zone launch token requires authentication, validates unlock state, and signs verifiable token', async (t) => {
+  const { baseUrl } = await withAuditServer(t);
+  const { verifyLaunchToken } = require('../lib/security');
+
+  // 1. Unauthenticated request must return 401
+  const unauthRes = await fetch(`${baseUrl}/api/zone/launch?zoneId=yellow`);
+  assert.equal(unauthRes.status, 401, 'Unauthenticated zone launch must return 401');
+
+  // 2. Register team
+  const regRes = await fetch(`${baseUrl}/api/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ teamId: 'LAUNCH-TEST-01', teamName: 'Launch Team', delegateId: 'OP1' })
+  });
+  assert.equal(regRes.status, 200);
+  const cookie = regRes.headers.get('set-cookie');
+
+  // 3. Request launch for locked zone (Blue is locked before Yellow completes)
+  const lockedRes = await fetch(`${baseUrl}/api/zone/launch?zoneId=blue`, {
+    headers: { Cookie: cookie }
+  });
+  assert.equal(lockedRes.status, 403, 'Requesting launch token for locked zone must return 403');
+  const lockedJson = await lockedRes.json();
+  assert.equal(lockedJson.error, 'ZONE_LOCKED');
+
+  // 4. Request launch for available zone (Yellow)
+  const yellowRes = await fetch(`${baseUrl}/api/zone/launch?zoneId=yellow`, {
+    headers: { Cookie: cookie }
+  });
+  assert.equal(yellowRes.status, 200, 'Requesting launch token for unlocked zone must return 200');
+  const yellowJson = await yellowRes.json();
+  assert.equal(yellowJson.ok, true);
+  assert.ok(yellowJson.launchToken, 'Must return signed launchToken');
+  assert.ok(yellowJson.targetUrl.includes(encodeURIComponent(yellowJson.launchToken)), 'Target URL must include encoded launchToken');
+
+  // 5. Verify cryptographic validity of launchToken
+  const verified = verifyLaunchToken(yellowJson.launchToken, SESSION_SECRET);
+  assert.ok(verified, 'Launch token must verify with SESSION_SECRET');
+  assert.equal(verified.teamId, 'LAUNCH-TEST-01');
+  assert.equal(verified.delegateId, 'LEADER');
+  assert.equal(verified.zoneId, 'yellow');
+  assert.ok(verified.exp > Date.now(), 'Token exp must be in the future');
+
+  // 6. Token with forged payload must fail verification
+  const parts = yellowJson.launchToken.split('.');
+  const forgedToken = `${parts[0]} forged.${parts[1]}`;
+  assert.equal(verifyLaunchToken(forgedToken, SESSION_SECRET), null, 'Forged token must fail verification');
+});
+
 

@@ -34,11 +34,11 @@
 
   const CANONICAL_ZONES = [
     { id: 'sanctuary', name: 'Sanctuary', pts: 100, color: '#e5b96e', ctf: 'Gate Pass' },
-    { id: 'yellow', name: 'Yellow Zone', pts: 200, color: '#f5c518', ctf: 'yellow-01' },
-    { id: 'blue', name: 'Blue Zone', pts: 400, color: '#56c8ff', ctf: 'blue-01' },
-    { id: 'orange', name: 'Orange Zone', pts: 600, color: '#ff8b3d', ctf: 'orange-01' },
-    { id: 'red', name: 'Red Zone', pts: 800, color: '#ff4058', ctf: 'red-01' },
-    { id: 'purple', name: 'Purple Zone', pts: 1000, color: '#bc8cff', ctf: 'purple-01' }
+    { id: 'yellow', name: 'Yellow Zone', pts: 200, color: '#f5c518', ctf: 'Industrial Quarantine (1 Flag)' },
+    { id: 'blue', name: 'Blue Zone', pts: 400, color: '#56c8ff', ctf: 'blue-zone-ctf-01..04 (4 Flags)' },
+    { id: 'orange', name: 'Orange Zone', pts: 600, color: '#ff8b3d', ctf: 'Burning Refinery' },
+    { id: 'red', name: 'Red Zone', pts: 800, color: '#ff4058', ctf: 'Infection Telemetry & Bioarchive' },
+    { id: 'purple', name: 'Purple Zone', pts: 1000, color: '#bc8cff', ctf: 'ML Survival Evaluator' }
   ];
 
   // --- DOM ELEMENTS ---
@@ -302,7 +302,7 @@
         pointsAwarded: data.pointsAwarded !== undefined ? data.pointsAwarded : 0,
         totalMlSubmissions: data.totalMlSubmissions !== undefined ? data.totalMlSubmissions : 0
       };
-      state.totalPointsPossible = data.totalPointsPossible || 3100;
+      state.totalPointsPossible = data.totalPointsPossible || 1510;
 
       const now = new Date();
       if (els.lastRefreshedLabel) {

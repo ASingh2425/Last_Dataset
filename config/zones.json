@@ -34,11 +34,32 @@
       "rewardDataset": "radio_final",
       "ctfs": [
         {
-          "id": "blue-01",
-          "title": "Submerged Server Fields Investigation",
-          "briefing": "Recover the Radio Comms dataset fragment.",
+          "id": "blue-zone-ctf-01",
+          "title": "Intercepted Message",
+          "briefing": "Correlate degraded packet headers with route hazard warnings.",
           "url": "https://bluezone-xi.vercel.app/",
           "completion": { "method": "hmac-sha256", "secretEnv": "CTF_SECRET_BLUE_01" }
+        },
+        {
+          "id": "blue-zone-ctf-02",
+          "title": "Compromised Node",
+          "briefing": "Decrypt the compromised relay node communication path.",
+          "url": "https://bluezone-xi.vercel.app/",
+          "completion": { "method": "hmac-sha256", "secretEnv": "CTF_SECRET_BLUE_02" }
+        },
+        {
+          "id": "blue-zone-ctf-03",
+          "title": "Recovered Transmission",
+          "briefing": "Recover voice archive VA-07 audio transmission.",
+          "url": "https://bluezone-xi.vercel.app/",
+          "completion": { "method": "hmac-sha256", "secretEnv": "CTF_SECRET_BLUE_03" }
+        },
+        {
+          "id": "blue-zone-ctf-04",
+          "title": "Intercepted Carrier",
+          "briefing": "Track carrier wave and geoint navigation target.",
+          "url": "https://bluezone-xi.vercel.app/",
+          "completion": { "method": "hmac-sha256", "secretEnv": "CTF_SECRET_BLUE_04" }
         }
       ]
     },

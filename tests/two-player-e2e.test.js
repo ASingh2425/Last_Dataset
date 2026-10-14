@@ -105,26 +105,38 @@ test('Two-Player Synchronized End-to-End Game Lifecycle: 3,100 pts & Permanent L
   assert.equal(p2JsonAfterSanc.score.total, 100, 'Player 2 sees 100 points after Player 1 clears Sanctuary');
   assert.equal(p2JsonAfterSanc.zones.find(z => z.id === 'yellow').unlocked, true, 'Yellow zone is unlocked for Player 2');
 
-  // 5. Progression through Yellow (200), Blue (400), Orange (600), Red (800)
+  // 5. Progression through Yellow (200), Blue (4x100 = 400), Orange (600), Red (800)
   // Players alternate solves to prove true multiplayer state synchronization
   const stages = [
-    { zone: 'yellow', ctf: 'yellow-01', playerCookie: cookie1, expectedScore: 300 }, // 100 + 200
-    { zone: 'blue', ctf: 'blue-01', playerCookie: cookie2, expectedScore: 700 },     // 300 + 400
-    { zone: 'orange', ctf: 'orange-01', playerCookie: cookie1, expectedScore: 1300 }, // 700 + 600
-    { zone: 'red', ctf: 'red-01', playerCookie: cookie2, expectedScore: 2100 }       // 1300 + 800
+    { zone: 'yellow', ctfs: [{ id: 'yellow-01', cookie: cookie1 }], clearCookie: cookie1, expectedScore: 300 },
+    {
+      zone: 'blue',
+      ctfs: [
+        { id: 'blue-zone-ctf-01', cookie: cookie1 },
+        { id: 'blue-zone-ctf-02', cookie: cookie2 },
+        { id: 'blue-zone-ctf-03', cookie: cookie1 },
+        { id: 'blue-zone-ctf-04', cookie: cookie2 }
+      ],
+      clearCookie: cookie2,
+      expectedScore: 700
+    },
+    { zone: 'orange', ctfs: [{ id: 'orange-01', cookie: cookie1 }], clearCookie: cookie1, expectedScore: 1300 },
+    { zone: 'red', ctfs: [{ id: 'red-01', cookie: cookie2 }], clearCookie: cookie2, expectedScore: 2100 }
   ];
 
   for (const stage of stages) {
-    const solveRes = await fetch(`${baseUrl}/api/dev/solve`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Cookie: stage.playerCookie },
-      body: JSON.stringify({ ctfId: stage.ctf })
-    });
-    assert.equal(solveRes.status, 200, `Solve ${stage.ctf} succeeds`);
+    for (const ctf of stage.ctfs) {
+      const solveRes = await fetch(`${baseUrl}/api/dev/solve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Cookie: ctf.cookie },
+        body: JSON.stringify({ ctfId: ctf.id })
+      });
+      assert.equal(solveRes.status, 200, `Solve ${ctf.id} succeeds`);
+    }
 
     const clearRes = await fetch(`${baseUrl}/api/zone/complete`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Cookie: stage.playerCookie },
+      headers: { 'Content-Type': 'application/json', Cookie: stage.clearCookie },
       body: JSON.stringify({ zoneId: stage.zone })
     });
     assert.equal(clearRes.status, 200, `Clear ${stage.zone} succeeds`);

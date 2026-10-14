@@ -247,11 +247,24 @@
 
     const targetUrl = ZONE_URLS[zoneId] || zone.url;
     if (targetUrl) {
-      const urlWithTeam = hub?.team?.id
-        ? `${targetUrl}${targetUrl.includes('?') ? '&' : '?'}team=${encodeURIComponent(hub.team.id)}`
-        : targetUrl;
-      window.open(urlWithTeam, '_blank', 'noopener,noreferrer');
-      toast(`DISPATCHED TO ${zone.name} ↗ (ACTIVE IN NEW TAB)`);
+      try {
+        const launchData = await api(`/api/zone/launch?zoneId=${encodeURIComponent(zoneId)}`);
+        const destination = launchData?.targetUrl || (hub?.team?.id
+          ? `${targetUrl}${targetUrl.includes('?') ? '&' : '?'}team=${encodeURIComponent(hub.team.id)}`
+          : targetUrl);
+        window.open(destination, '_blank', 'noopener,noreferrer');
+        toast(`DISPATCHED TO ${zone.name} ↗ (ACTIVE IN NEW TAB)`);
+      } catch (err) {
+        if (err.message && err.message.includes('LOCKED')) {
+          showDenied(zoneId);
+        } else {
+          const urlWithTeam = hub?.team?.id
+            ? `${targetUrl}${targetUrl.includes('?') ? '&' : '?'}team=${encodeURIComponent(hub.team.id)}`
+            : targetUrl;
+          window.open(urlWithTeam, '_blank', 'noopener,noreferrer');
+          toast(`DISPATCHED TO ${zone.name} ↗ (ACTIVE IN NEW TAB)`);
+        }
+      }
     } else {
       await showZone(zoneId);
     }

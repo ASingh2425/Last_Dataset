@@ -414,7 +414,7 @@
             <strong style="font-size:16px; color:#4ade80; font-family:var(--font-tech); letter-spacing:0.08em;">
               ★ EVALUATION SUCCESS // R² ≥ 0.80 BENCHMARK CRUSHED ★
             </strong>
-            <span class="badge badge-green">ESCAPE GATE UNSEALED · +500 PTS</span>
+            <span class="badge badge-green">ESCAPE GATE UNSEALED · +1,000 PTS</span>
           </div>
           <p style="font-size:13px; color:#dcfce7; line-height:1.5; margin:0 0 14px 0;">
             Your model converged with R² = <strong>${r2Pct}%</strong> (MSE: ${result.mseScore.toFixed(6)}), breaking the Core Quarantine!
