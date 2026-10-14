@@ -207,7 +207,7 @@
   }
   const ZONE_URLS = {
     yellow: (typeof window !== 'undefined' && (window.TLD_YELLOW_ZONE_URL || localStorage.getItem('tld_yellow_zone_url'))) || 'https://yellow-zone-neon.vercel.app',
-    blue: 'https://bluezone-xi.vercel.app/',
+    blue: 'https://bluezone-xi.vercel.app/blue-zone',
     orange: 'https://or-light-gamma.vercel.app/',
     red: 'https://red-five-liart.vercel.app/',
     purple: '/purple'

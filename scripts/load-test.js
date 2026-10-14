@@ -229,13 +229,15 @@ async function simulateTeamJourney(teamIndex, baseUrl, metrics, winningCsv, lowC
   }, metrics);
   if (ds1Res.status !== 200) throw new Error(`Dataset community_final failed: ${ds1Res.status}`);
 
-  // 7. Blue Sector: solve blue-01, then clear Blue (400 pts)
-  const solveB = await request(baseUrl, '/api/dev/solve', {
-    method: 'POST',
-    headers: { Cookie: cookie1 },
-    body: { ctfId: 'blue-01' }
-  }, metrics);
-  if (solveB.status !== 200) throw new Error(`Blue solve failed: ${solveB.status}`);
+  // 7. Blue Sector: solve all 4 Blue CTFs (100 pts each = 400 pts), then clear Blue
+  for (const blueCtfId of ['blue-zone-ctf-01', 'blue-zone-ctf-02', 'blue-zone-ctf-03', 'blue-zone-ctf-04']) {
+    const solveB = await request(baseUrl, '/api/dev/solve', {
+      method: 'POST',
+      headers: { Cookie: cookie1 },
+      body: { ctfId: blueCtfId }
+    }, metrics);
+    if (solveB.status !== 200) throw new Error(`Blue solve (${blueCtfId}) failed: ${solveB.status}`);
+  }
 
   const blueRes = await request(baseUrl, '/api/zone/complete', {
     method: 'POST',

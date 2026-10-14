@@ -1,7 +1,7 @@
 -- =========================================================================
 -- THE LAST DATASET — MASTER 150-TEAM ROSTER IMPORT
 -- TechTatva 2026 | MAHE Manipal
--- Total Teams: 155 | Total Participants: 232
+-- Total Teams: 158 | Total Participants: 238
 -- Generated automatically with SHA-256 passcodes and atomic zone init
 -- =========================================================================
 
@@ -168,11 +168,14 @@ VALUES
 ('TECHTEAM11760', 'Team 11760', 'ANAY JALOTA', '9879100015', 'ad68edc063dc2cf519f8f6dc7d51b3142055b4dcc495f075463f53e5807c410e', 'MAHE', TRUE),
 ('TECHTEAM10877', 'Team 10877', 'PATNASETTY SANJANA', '8522027759', '086fe6ab1ddafc050dac05a7d8a403020d0da546be02d634b9c7d0a329a214c7', 'MAHE', TRUE),
 ('TECHTEAM11214', 'Team 11214', 'SEELAM CHETANA', '7780610875', '3f719370faf8b3c3134839054dae4823c6d4a2e32a2dd35984a6b69bf4d8b674', 'NONMAHE', TRUE),
-('TECHTEAM99001', 'Mock Team Alpha (Fresh)', 'Mock Operator Alpha', '9999900001', 'd6c558b758b65c1ca89ea90360c9bdb459488ccda89780bdad4c522fb4fcd82d', 'MAHE', TRUE),
-('TECHTEAM99002', 'Mock Team Beta (Yellow Ready)', 'Mock Operator Beta', '9999900003', '86f2fe7612729acafa372ead0c03ca02968896f4efc2b25dfe18e0c1b0dcd2b9', 'MAHE', TRUE),
-('TECHTEAM99003', 'Mock Team Gamma (Blue Ready)', 'Mock Operator Gamma', '9999900005', 'd45988b9b4fafa0129b6a4fb455c75dc02e1b8a71e64a9f2b302413710b279eb', 'NONMAHE', TRUE),
-('TECHTEAM99004', 'Mock Team Delta (Purple Ready)', 'Mock Operator Delta', '9999900007', 'b14142d44e6bd33595fb0ad7b8e1144838f278d82ad69df30b73e509a519a286', 'MAHE', TRUE),
-('TECHTEAM99005', 'Mock Team Omega (Survivor Cleared)', 'Mock Operator Omega', '9999900009', '960010c4527eb18271c0e7a6b92349afecef9f4ec42eb7cc9eaeb6f5f6a36805', 'MAHE', TRUE)
+('TECHTEAM99001', 'Mock Team Alpha (Fresh)', 'Mock Leader Alpha', '9999900001', 'd6c558b758b65c1ca89ea90360c9bdb459488ccda89780bdad4c522fb4fcd82d', 'MAHE', TRUE),
+('TECHTEAM99002', 'Mock Team Beta (Fresh)', 'Mock Leader Beta', '9999900003', '86f2fe7612729acafa372ead0c03ca02968896f4efc2b25dfe18e0c1b0dcd2b9', 'MAHE', TRUE),
+('TECHTEAM99003', 'Mock Team Gamma (Fresh)', 'Mock Leader Gamma', '9999900005', 'd45988b9b4fafa0129b6a4fb455c75dc02e1b8a71e64a9f2b302413710b279eb', 'NONMAHE', TRUE),
+('TECHTEAM99004', 'Mock Team Delta (Fresh)', 'Mock Leader Delta', '9999900007', 'b14142d44e6bd33595fb0ad7b8e1144838f278d82ad69df30b73e509a519a286', 'MAHE', TRUE),
+('TECHTEAM99005', 'Mock Team Epsilon (Fresh)', 'Mock Leader Epsilon', '9999900009', '960010c4527eb18271c0e7a6b92349afecef9f4ec42eb7cc9eaeb6f5f6a36805', 'MAHE', TRUE),
+('TECHTEAM99006', 'Mock Team Zeta (Fresh)', 'Mock Leader Zeta', '9999900011', 'ea7348c33fc3d892a6b2eb55e3226c11768132cfee9b1de54c2d4136220eef41', 'MAHE', TRUE),
+('TECHTEAM99007', 'Mock Team Eta (Fresh)', 'Mock Leader Eta', '9999900013', '4b8ff45bf9d0a305699078dc23d8f581e88980c6dd1d2c654c4e717380bd1db0', 'MAHE', TRUE),
+('TECHTEAM99008', 'Mock Team Theta (Fresh)', 'Mock Leader Theta', '9999900015', 'cdd300022785675d156c106fe60ddd764674b5a135114ac8eef00f4c3163f77b', 'MAHE', TRUE)
 ON CONFLICT (id) DO UPDATE SET
     team_name = EXCLUDED.team_name,
     team_leader_name = EXCLUDED.team_leader_name,
@@ -419,16 +422,22 @@ VALUES
 ('12403', 'TECHTEAM10877', 'PATNASETTY SANJANA', TRUE),
 ('10271', 'TECHTEAM11214', 'PADALA MANYATHA', FALSE),
 ('12564', 'TECHTEAM11214', 'SEELAM CHETANA', TRUE),
-('99001', 'TECHTEAM99001', 'Mock Operator Alpha', TRUE),
-('99002', 'TECHTEAM99001', 'Mock Partner Alpha', FALSE),
-('99003', 'TECHTEAM99002', 'Mock Operator Beta', TRUE),
-('99004', 'TECHTEAM99002', 'Mock Partner Beta', FALSE),
-('99005', 'TECHTEAM99003', 'Mock Operator Gamma', TRUE),
-('99006', 'TECHTEAM99003', 'Mock Partner Gamma', FALSE),
-('99007', 'TECHTEAM99004', 'Mock Operator Delta', TRUE),
-('99008', 'TECHTEAM99004', 'Mock Partner Delta', FALSE),
-('99009', 'TECHTEAM99005', 'Mock Operator Omega', TRUE),
-('99010', 'TECHTEAM99005', 'Mock Partner Omega', FALSE)
+('99001', 'TECHTEAM99001', 'Mock Leader Alpha', TRUE),
+('99002', 'TECHTEAM99001', 'Mock Member Alpha', FALSE),
+('99003', 'TECHTEAM99002', 'Mock Leader Beta', TRUE),
+('99004', 'TECHTEAM99002', 'Mock Member Beta', FALSE),
+('99005', 'TECHTEAM99003', 'Mock Leader Gamma', TRUE),
+('99006', 'TECHTEAM99003', 'Mock Member Gamma', FALSE),
+('99007', 'TECHTEAM99004', 'Mock Leader Delta', TRUE),
+('99008', 'TECHTEAM99004', 'Mock Member Delta', FALSE),
+('99009', 'TECHTEAM99005', 'Mock Leader Epsilon', TRUE),
+('99010', 'TECHTEAM99005', 'Mock Member Epsilon', FALSE),
+('99011', 'TECHTEAM99006', 'Mock Leader Zeta', TRUE),
+('99012', 'TECHTEAM99006', 'Mock Member Zeta', FALSE),
+('99013', 'TECHTEAM99007', 'Mock Leader Eta', TRUE),
+('99014', 'TECHTEAM99007', 'Mock Member Eta', FALSE),
+('99015', 'TECHTEAM99008', 'Mock Leader Theta', TRUE),
+('99016', 'TECHTEAM99008', 'Mock Member Theta', FALSE)
 ON CONFLICT (delegate_id) DO UPDATE SET
     team_id = EXCLUDED.team_id,
     member_name = EXCLUDED.member_name,
@@ -442,35 +451,5 @@ ON CONFLICT (team_id, zone_id) DO NOTHING;
 INSERT INTO public.zone_progress (team_id, zone_id, status, unlocked_at)
 SELECT id, 'yellow', 'locked', NULL FROM public.teams
 ON CONFLICT (team_id, zone_id) DO NOTHING;
-
--- 4. Initialize progression for Mock Testing Teams
-INSERT INTO public.score_ledger (team_id, delegate_id, points, source_type, source_id, idempotency_key) VALUES
-('TECHTEAM99002', '99003', 100, 'sanctuary_complete', 'sanctuary-gate', 'TECHTEAM99002:sanctuary-gate'),
-('TECHTEAM99002', '99003', 200, 'zone_yellow_clear', 'yellow-zone', 'TECHTEAM99002:yellow-zone'),
-('TECHTEAM99003', '99005', 100, 'sanctuary_complete', 'sanctuary-gate', 'TECHTEAM99003:sanctuary-gate'),
-('TECHTEAM99003', '99005', 200, 'zone_yellow_clear', 'yellow-zone', 'TECHTEAM99003:yellow-zone'),
-('TECHTEAM99003', '99005', 400, 'zone_blue_clear', 'blue-zone', 'TECHTEAM99003:blue-zone'),
-('TECHTEAM99004', '99007', 100, 'sanctuary_complete', 'sanctuary-gate', 'TECHTEAM99004:sanctuary-gate'),
-('TECHTEAM99004', '99007', 200, 'zone_yellow_clear', 'yellow-zone', 'TECHTEAM99004:yellow-zone'),
-('TECHTEAM99004', '99007', 400, 'zone_blue_clear', 'blue-zone', 'TECHTEAM99004:blue-zone'),
-('TECHTEAM99004', '99007', 600, 'zone_orange_clear', 'orange-zone', 'TECHTEAM99004:orange-zone'),
-('TECHTEAM99004', '99007', 800, 'zone_red_clear', 'red-zone', 'TECHTEAM99004:red-zone')
-ON CONFLICT (idempotency_key) DO NOTHING;
-
-INSERT INTO public.zone_progress (team_id, zone_id, status, completed_at, unlocked_at) VALUES
-('TECHTEAM99002', 'sanctuary', 'completed', NOW(), NOW()),
-('TECHTEAM99002', 'yellow', 'completed', NOW(), NOW()),
-('TECHTEAM99002', 'blue', 'available', NULL, NOW()),
-('TECHTEAM99003', 'sanctuary', 'completed', NOW(), NOW()),
-('TECHTEAM99003', 'yellow', 'completed', NOW(), NOW()),
-('TECHTEAM99003', 'blue', 'completed', NOW(), NOW()),
-('TECHTEAM99003', 'orange', 'available', NULL, NOW()),
-('TECHTEAM99004', 'sanctuary', 'completed', NOW(), NOW()),
-('TECHTEAM99004', 'yellow', 'completed', NOW(), NOW()),
-('TECHTEAM99004', 'blue', 'completed', NOW(), NOW()),
-('TECHTEAM99004', 'orange', 'completed', NOW(), NOW()),
-('TECHTEAM99004', 'red', 'completed', NOW(), NOW()),
-('TECHTEAM99004', 'purple', 'available', NULL, NOW())
-ON CONFLICT (team_id, zone_id) DO UPDATE SET status = EXCLUDED.status, completed_at = EXCLUDED.completed_at, unlocked_at = EXCLUDED.unlocked_at;
 
 COMMIT;
