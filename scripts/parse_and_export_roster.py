@@ -455,9 +455,12 @@ def main():
     clean_teams = {}
     for team in processed_teams:
         tid = team['id']
+        first_member = team['members'][0] if team['members'] else {}
         clean_teams[tid] = {
             "id": tid,
             "name": team["team_name"],
+            "passcode": team["passcode"],
+            "college": first_member.get('college', ''),
             "createdAt": "2026-10-14T00:00:00.000Z",
             "solvedCtfs": [],
             "events": [],
@@ -465,14 +468,17 @@ def main():
             "memberDetails": team['members'],
             "studentType": team['student_type'],
             "leaderName": team['team_leader_name'],
-            "leaderMobile": team['leader_mobile']
+            "leaderMobile": team['leader_mobile'],
+            "leaderEmail": team['leader_email']
         }
 
     fallback_data = {
         "teams": clean_teams,
         "sessions": {},
         "submissions": [],
-        "scores": {}
+        "scores": {},
+        "usedSignatures": [],
+        "schemaVersion": 1
     }
         
     with open(progress_path, 'w', encoding='utf-8') as f:
