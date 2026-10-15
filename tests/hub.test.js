@@ -234,6 +234,11 @@ test('ML reconcile endpoint requires authentication, valid evaluationId, and rec
 test('Orange Zone completion unlocks Red Zone and forensics dataset via POST, GET, and service integration', async (t) => {
   const { req } = await withServer(t);
 
+  // 0. Unauthenticated GET /api/orange/complete returns 401
+  let unauthRes = await req('/api/orange/complete', { method: 'GET' });
+  assert.equal(unauthRes.response.status, 401);
+  assert.equal(unauthRes.payload.error, 'AUTH_REQUIRED');
+
   // 1. Register team
   let reg = await req('/api/register', { method: 'POST', body: { teamId: 'ORANGE-TEST-01', teamName: 'Orange Pioneers' } });
   assert.equal(reg.response.status, 200);
