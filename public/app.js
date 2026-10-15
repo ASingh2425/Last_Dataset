@@ -161,8 +161,13 @@
   }
   function showTooltip(zoneId, event) {
     const zone = zoneById(zoneId); if (!zone) return;
-    const tip = $('#map-tooltip'); tip.hidden = false;
-    tip.innerHTML = `<strong style="color:${escapeHTML(zone.color)}">${escapeHTML(zone.name)}</strong>${zone.unlocked ? (zone.state === 'cleared' ? 'ZONE CLEARED · FRAGMENT SECURED' : 'SECTOR UNLOCKED · CLICK TO ACCESS') : 'ZONE ACCESS LOCKED: COMPLETE SANCTUARY STORYLINE BRIEFING FIRST'}`;
+    let tipText = zone.unlocked
+      ? (zone.state === 'cleared' ? 'ZONE CLEARED · FRAGMENT SECURED' : 'SECTOR UNLOCKED · CLICK TO ACCESS')
+      : 'ZONE ACCESS LOCKED: COMPLETE PREVIOUS SECTOR FIRST';
+    if (zoneId === 'orange' && zone.unlocked && zone.state !== 'cleared') {
+      tipText = 'ORANGE SECTOR ACTIVE · EXPLORE & USE HUD SYNC TO ADVANCE';
+    }
+    tip.innerHTML = `<strong style="color:${escapeHTML(zone.color)}">${escapeHTML(zone.name)}</strong>${tipText}`;
     positionTooltip(event);
   }
   function positionTooltip(event) {
@@ -192,25 +197,14 @@
       } else if (zoneId === 'blue') {
         sub.textContent = 'CLEAR ALL 5 YELLOW ZONE CTFS & RETRIEVE COMMUNITY FRAGMENT TO ACCESS BLUE ZONE';
       } else if (zoneId === 'red' && hub?.zones?.find((z) => z.id === 'blue')?.state === 'cleared') {
-        sub.innerHTML = 'ORANGE ZONE REQUIRED TO ACCESS RED ZONE. <a href="#" id="sync-orange-btn" style="color:#ff8b3d;text-decoration:underline;cursor:pointer;font-weight:bold;">SOLVED ORANGE? CLICK TO SYNC & UNLOCK RED ZONE ↗</a>';
+        sub.innerHTML = 'ORANGE ZONE REQUIRED TO ACCESS RED ZONE.<br><button id="sync-orange-btn" class="btn-orange-sync" style="margin-top:6px;">SOLVED ORANGE? SYNC & UNLOCK RED ZONE ↻</button>';
         const syncBtn = $('#sync-orange-btn');
         if (syncBtn) {
           syncBtn.onclick = async (e) => {
             e.preventDefault();
             e.stopPropagation();
-            try {
-              const res = await api('/api/orange/complete', { method: 'POST', body: { teamId: hub?.team?.id } });
-              if (res && res.ok) {
-                applyBootstrap(res.bootstrap || res, { animate: true });
-                renderMapNodes();
-                toast('ORANGE ZONE CLEARED! RED ZONE UNLOCKED!');
-                travelToZone('red');
-              } else {
-                toast('Could not verify Orange Zone clearance.', true);
-              }
-            } catch (err) {
-              toast(err.message || 'Prerequisite not met.', true);
-            }
+            const synced = await syncOrangeZone({ silent: false });
+            if (synced) travelToZone('red');
           };
         }
       } else {
@@ -242,6 +236,42 @@
     red: 'https://red-purple-slideshow.vercel.app/'
   };
 
+  async function syncOrangeZone(options = {}) {
+    if (!hub?.authenticated) {
+      if (!options.silent) toast('AUTHENTICATION REQUIRED: Log in with your team credentials first.', true);
+      return false;
+    }
+    const teamId = hub?.team?.id;
+    if (!teamId) return false;
+
+    const isBlueDone = hub?.zones?.find((z) => z.id === 'blue')?.state === 'cleared' || hub?.datasets?.includes('radio_final');
+    if (!isBlueDone) {
+      if (!options.silent) toast('PREREQUISITE UNMET: Clear Blue Zone first before syncing Orange Sector.', true);
+      return false;
+    }
+
+    try {
+      if (!options.silent) toast('SYNCHRONIZING ORANGE ZONE WITH CENTRAL VAULT...');
+      const res = await api('/api/orange/complete', {
+        method: 'POST',
+        body: { teamId, delegateId: hub.player?.delegateId || 'OPERATOR' }
+      });
+      if (res && (res.ok || res.bootstrap)) {
+        applyBootstrap(res.bootstrap || res, { animate: true });
+        renderMapNodes();
+        storageRemove('tld_orange_launched');
+        toast('ORANGE SECTOR SYNCHRONIZED · RED ZONE & FORENSICS UNLOCKED!');
+        return true;
+      } else {
+        if (!options.silent) toast(res?.message || 'Could not verify Orange Zone clearance.', true);
+        return false;
+      }
+    } catch (err) {
+      if (!options.silent) toast(err.message || 'Error synchronizing Orange Zone.', true);
+      return false;
+    }
+  }
+
   async function travelToZone(zoneId) {
     if (!hub?.authenticated) {
       toast('AUTHENTICATION REQUIRED: PLEASE LOG IN WITH YOUR TEAM CREDENTIALS.', true);
@@ -251,18 +281,13 @@
     const zone = zoneById(zoneId); if (!zone) return;
     if (!zone.unlocked) {
       if (zoneId === 'red' && hub?.zones?.find((z) => z.id === 'blue')?.state === 'cleared') {
-        try {
-          const res = await api('/api/orange/complete', { method: 'POST', body: { teamId: hub?.team?.id } });
-          if (res && res.ok) {
-            applyBootstrap(res.bootstrap || res, { animate: true });
-            renderMapNodes();
-            toast('ORANGE SECTOR CONFIRMED · RED ZONE UNLOCKED!');
-            const updatedRed = zoneById('red');
-            if (updatedRed && updatedRed.unlocked) {
-              return travelToZone('red');
-            }
+        const synced = await syncOrangeZone({ silent: false });
+        if (synced) {
+          const updatedRed = zoneById('red');
+          if (updatedRed && updatedRed.unlocked) {
+            return travelToZone('red');
           }
-        } catch (_) {}
+        }
       }
       return showDenied(zoneId);
     }
@@ -282,6 +307,10 @@
     } else { const p = { x: zone.position.x * 12, y: zone.position.y * 7.6 }; marker.setAttribute('cx', p.x); marker.setAttribute('cy', p.y); ring.setAttribute('cx', p.x); ring.setAttribute('cy', p.y); }
     $('#map-region-label').textContent = `REGION ${String(zone.order).padStart(2, '0')} / ${zone.name}`;
     $('#map-region-subtitle').textContent = zone.tagline;
+
+    if (zoneId === 'orange') {
+      storageSet('tld_orange_launched', 'true');
+    }
 
     const targetUrl = ZONE_URLS[zoneId] || zone.url;
     if (targetUrl) {
@@ -473,13 +502,6 @@
     $('#progress-caption').textContent = hub.progress.complete ? 'ALL FRAGMENTS RECOVERED' : `${hub.progress.total - hub.progress.solved} FRAGMENTS REMAIN`;
     $('#progress-bar').style.width = `${Math.round(hub.progress.ratio * 100)}%`;
     $('#ring-progress').style.strokeDashoffset = `${226.2 * (1 - hub.progress.ratio)}`;
-    const current = hub.zones.find((zone) => zone.unlocked && zone.state !== 'cleared') || [...hub.zones].reverse().find((zone) => zone.state === 'cleared') || hub.zones[0];
-    $('#hud-objective-title').textContent = hub.progress.complete ? 'RECOVERY COMPLETE' : `ENTER ${current.name}`;
-    $('#hud-objective-copy').textContent = hub.progress.complete ? 'Every surviving record has been recovered.' : current.state === 'cleared' ? 'Quarantine breached. Proceed to next sector.' : 'Recover the surviving data fragment.';
-    $('#zones-count').textContent = `${String(hub.zones.filter((zone) => zone.unlocked).length).padStart(2, '0')} / 05`;
-    $('#hud-zone-list').innerHTML = hub.zones.map((zone) => `<button class="hud-zone-row ${zone.state === 'cleared' ? 'cleared' : ''}" data-hud-zone="${escapeHTML(zone.id)}" style="--zone:${escapeHTML(zone.color)}" ${zone.unlocked ? '' : 'disabled'} aria-label="${escapeHTML(zone.name)}, ${escapeHTML(zone.state)}"><span class="zone-chip"></span><b>${escapeHTML(zone.name)}</b><span>${zone.state === 'locked' ? 'LOCKED' : zone.state === 'cleared' ? '✓ CLEAR' : 'ENTER ↗'}</span></button>`).join('');
-    queryAll('.hud-zone-row').forEach((button) => button.addEventListener('click', () => travelToZone(button.dataset.hudZone)));
-
     // Render earned dataset fragments — all datasets available when yellow, blue, orange, red are solved / purple unlocked
     const earned = hub.datasets || [];
     const isPurpleUnlocked = !!hub.zones?.some((z) => z.id === 'purple' && (z.unlocked || z.state === 'cleared' || z.state === 'available' || z.state === 'in-progress')) || !!hub.progress?.complete;
@@ -487,6 +509,58 @@
     const isBlueDone = earned.includes('radio_final') || hub.zones?.some((z) => z.id === 'blue' && z.state === 'cleared') || isPurpleUnlocked;
     const isOrangeDone = earned.includes('forensics_final') || hub.zones?.some((z) => z.id === 'orange' && z.state === 'cleared') || isPurpleUnlocked;
     const isRedDone = earned.includes('research_final') || hub.zones?.some((z) => z.id === 'red' && z.state === 'cleared') || isPurpleUnlocked;
+
+    const current = hub.zones.find((zone) => zone.unlocked && zone.state !== 'cleared') || [...hub.zones].reverse().find((zone) => zone.state === 'cleared') || hub.zones[0];
+    if (isBlueDone && !isOrangeDone) {
+      $('#hud-objective-title').textContent = 'ORANGE SECTOR ACTIVE';
+      $('#hud-objective-copy').innerHTML = `
+        <div class="orange-sync-container">
+          <div class="orange-sync-title"><span class="orange-sync-dot"></span>INVESTIGATION IN PROGRESS</div>
+          <div style="font-size:7px;color:#a0ada0;line-height:1.4;">Recover the forensics fragment in Orange Zone, then sync to unlock Red Zone:</div>
+          <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:4px;">
+            <button id="hud-launch-orange-btn" class="btn-orange-launch">LAUNCH ↗</button>
+            <button id="hud-sync-orange-btn" class="btn-orange-sync">SYNC & UNLOCK RED ↻</button>
+          </div>
+        </div>
+      `;
+      const launchBtn = $('#hud-launch-orange-btn');
+      const syncBtn = $('#hud-sync-orange-btn');
+      if (launchBtn) launchBtn.onclick = (e) => { e.stopPropagation(); travelToZone('orange'); };
+      if (syncBtn) syncBtn.onclick = (e) => { e.stopPropagation(); syncOrangeZone(); };
+    } else {
+      $('#hud-objective-title').textContent = hub.progress.complete ? 'RECOVERY COMPLETE' : `ENTER ${current.name}`;
+      $('#hud-objective-copy').textContent = hub.progress.complete ? 'Every surviving record has been recovered.' : current.state === 'cleared' ? 'Quarantine breached. Proceed to next sector.' : 'Recover the surviving data fragment.';
+    }
+
+    $('#zones-count').textContent = `${String(hub.zones.filter((zone) => zone.unlocked).length).padStart(2, '0')} / 05`;
+    $('#hud-zone-list').innerHTML = hub.zones.map((zone) => {
+      let actionLabel = zone.state === 'locked' ? 'LOCKED' : zone.state === 'cleared' ? '✓ CLEAR' : 'ENTER ↗';
+      let extraSync = '';
+      if (zone.id === 'orange' && isBlueDone && !isOrangeDone) {
+        actionLabel = 'ACTIVE';
+        extraSync = `<button class="btn-orange-sync" style="padding:2px 6px;font-size:7px;margin-left:4px;" id="zone-row-sync-orange" title="Sync Orange Zone & unlock Red Zone">SYNC ↻</button>`;
+      }
+      return `<div class="hud-zone-row ${zone.state === 'cleared' ? 'cleared' : ''}" data-hud-zone="${escapeHTML(zone.id)}" style="--zone:${escapeHTML(zone.color)};display:flex;align-items:center;justify-content:space-between;cursor:pointer;" ${zone.unlocked ? '' : 'style="opacity:0.48"'} aria-label="${escapeHTML(zone.name)}, ${escapeHTML(zone.state)}">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="zone-chip"></span>
+          <b>${escapeHTML(zone.name)}</b>
+        </div>
+        <div style="display:flex;align-items:center;">
+          <span style="font-size:7px;color:#829084;">${actionLabel}</span>
+          ${extraSync}
+        </div>
+      </div>`;
+    }).join('');
+    queryAll('.hud-zone-row').forEach((row) => {
+      row.addEventListener('click', (e) => {
+        if (e.target.id === 'zone-row-sync-orange') {
+          e.stopPropagation();
+          syncOrangeZone();
+        } else if (row.dataset.hudZone) {
+          travelToZone(row.dataset.hudZone);
+        }
+      });
+    });
 
     const allDatasets = [
       { key: 'train', label: 'HISTORICAL TRAINING SET (79 COLS)', file: 'train.csv', unlocked: isPurpleUnlocked },
@@ -516,6 +590,11 @@
             <span style="font-weight:600;color:#f0fdf4;">◈ ${escapeHTML(d.file)}</span>
             <span style="color:#4ade80;font-weight:bold;letter-spacing:0.5px;">DOWNLOAD ⤓</span>
           </a>`;
+        } else if (d.key === 'forensics_final' && isBlueDone && !isOrangeDone) {
+          return `<div class="hud-zone-row" style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;margin-bottom:4px;font-size:11px;background:rgba(255,139,61,0.08);border:1px dashed rgba(255,139,61,0.5);border-radius:4px;">
+            <span style="color:#fdba74;">◇ ${escapeHTML(d.file)}</span>
+            <button id="btn-sync-dataset-orange" class="btn-orange-sync" style="padding:2px 7px;font-size:7px;">SYNC & UNLOCK ↻</button>
+          </div>`;
         } else {
           return `<div class="hud-zone-row" style="opacity:0.4;display:flex;align-items:center;justify-content:space-between;padding:7px 10px;margin-bottom:4px;font-size:11px;border:1px dashed rgba(255,255,255,0.1);border-radius:4px;">
             <span style="color:#888;">◇ ${escapeHTML(d.file)}</span>
@@ -523,6 +602,8 @@
           </div>`;
         }
       }).join('');
+      const datasetSyncBtn = $('#btn-sync-dataset-orange');
+      if (datasetSyncBtn) datasetSyncBtn.onclick = (e) => { e.stopPropagation(); syncOrangeZone(); };
     }
 
     $('#survivor-log').innerHTML = (hub.events || []).slice(0, 5).map((event) => `<p><time>${fmtTime(event.at)}</time> ${escapeHTML(event.message)}</p>`).join('') || '<p><time>--:--</time> NETWORK INITIALIZED.</p>';
@@ -729,21 +810,29 @@
         toast('SANCTUARY GATE BREACHED · YELLOW ZONE UNLOCKED!');
       }
     };
-    window.addEventListener('focus', () => { refreshBootstrap({ animate: true }); });
+    const handleTabRevisit = async () => {
+      const next = await refreshBootstrap({ animate: true });
+      const earned = next?.datasets || [];
+      const blueDone = earned.includes('radio_final') || next?.zones?.some((z) => z.id === 'blue' && z.state === 'cleared');
+      const orangeDone = earned.includes('forensics_final') || next?.zones?.some((z) => z.id === 'orange' && z.state === 'cleared');
+      if (blueDone && !orangeDone && storageGet('tld_orange_launched') === 'true') {
+        await syncOrangeZone({ silent: true });
+      }
+    };
+    window.addEventListener('focus', handleTabRevisit);
     document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') refreshBootstrap({ animate: true });
+      if (document.visibilityState === 'visible') handleTabRevisit();
     });
     window.addEventListener('message', async (event) => {
-      if (event.data?.type === 'ZONE_COMPLETED' || event.data?.type === 'ORANGE_ZONE_COMPLETED') {
+      if (event.data?.type === 'ZONE_COMPLETED' || event.data?.type === 'ORANGE_ZONE_COMPLETED' || event.data?.type === 'FORENSICS_COMPLETED' || event.data?.type === 'SYNC_ORANGE') {
         const zId = event.data?.zoneId || 'orange';
         if (zId === 'orange' && hub?.team?.id) {
-          try {
-            await api('/api/orange/complete', { method: 'POST', body: { teamId: hub.team.id } });
-          } catch (_) {}
+          await syncOrangeZone({ silent: false });
+        } else {
+          await refreshBootstrap({ animate: true });
+          renderMapNodes();
+          toast('SECTOR PROGRESS SYNCHRONIZED · VAULT UPDATED');
         }
-        await refreshBootstrap({ animate: true });
-        renderMapNodes();
-        toast('SECTOR PROGRESS SYNCHRONIZED · VAULT UPDATED');
       }
       if (event.data?.type === 'PURPLE_ESCAPE_QUALIFIED') {
         refreshBootstrap({ animate: true }).then((bootstrap) => {
@@ -859,12 +948,20 @@
         else if (data.view?.screen === 'ctf' && data.view.ctfId) await openCtf(data.view.ctfId, { instant: true });
         else { setScreen('map'); }
         renderMapNodes();
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('sync') === 'orange' || urlParams.get('sync') === 'orange_success' || urlParams.get('completed') === 'orange') {
+          setTimeout(() => syncOrangeZone({ silent: false }), 300);
+        }
       } else {
         hub = data;
         if (location.hash === '#registration') await navigate('registration', { instant: true });
         else if (location.hash === '#map') { setScreen('map'); updateHUD(); }
         else setScreen('hero');
         renderMapNodes();
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('sync') === 'orange' || urlParams.get('sync') === 'orange_success' || urlParams.get('completed') === 'orange') {
+          setTimeout(() => syncOrangeZone({ silent: false }), 300);
+        }
       }
     } catch (error) {
       setScreen('hero'); toast('LOCAL SIGNAL IS NOT REACHABLE. START THE HUB SERVER AND RETRY.', true);

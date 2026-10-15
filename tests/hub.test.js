@@ -55,9 +55,9 @@ async function withServer(t, configMode = 'open') {
   const address = server.address();
   const baseUrl = `http://127.0.0.1:${address.port}`;
   t.after(async () => { await new Promise((resolve) => server.close(resolve)); fs.rmSync(dir, { recursive: true, force: true }); });
-  async function req(route, { method = 'GET', body, cookie } = {}) {
-    const headers = { Accept: 'application/json' };
-    if (body !== undefined) headers['Content-Type'] = 'application/json';
+  async function req(route, { method = 'GET', body, cookie, headers: customHeaders } = {}) {
+    const headers = { Accept: 'application/json', ...(customHeaders || {}) };
+    if (body !== undefined && !headers['Content-Type']) headers['Content-Type'] = 'application/json';
     if (cookie) headers.Cookie = cookie;
     const response = await fetch(baseUrl + route, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
     const contentType = response.headers.get('content-type') || '';
@@ -229,5 +229,50 @@ test('ML reconcile endpoint requires authentication, valid evaluationId, and rec
   assert.equal(reconRes.payload.evaluationId, evalId);
   assert.equal(reconRes.payload.submissionsUsed, 1);
   assert.equal(reconRes.payload.submissionsRemaining, 9);
+});
+
+test('Orange Zone completion unlocks Red Zone and forensics dataset via POST, GET, and service integration', async (t) => {
+  const { req } = await withServer(t);
+
+  // 1. Register team
+  let reg = await req('/api/register', { method: 'POST', body: { teamId: 'ORANGE-TEST-01', teamName: 'Orange Pioneers' } });
+  assert.equal(reg.response.status, 200);
+  const cookie = reg.cookie;
+
+  // 2. Clear Sanctuary, Yellow, and Blue
+  await req('/api/dev/solve', { method: 'POST', body: { ctfId: 'yellow-01' }, cookie });
+  await req('/api/zone/complete', { method: 'POST', body: { zoneId: 'yellow' }, cookie });
+  await req('/api/zone/complete', { method: 'POST', body: { zoneId: 'blue' }, cookie });
+
+  // 3. Complete Orange via POST /api/orange/complete
+  let orangeRes = await req('/api/orange/complete', { method: 'POST', body: { teamId: 'ORANGE-TEST-01' }, cookie });
+  assert.equal(orangeRes.response.status, 200);
+  assert.equal(orangeRes.payload.ok, true);
+  assert.equal(orangeRes.payload.zoneId, 'orange');
+
+  // Verify bootstrap has Red unlocked and forensics_final awarded
+  let boot = await req('/api/bootstrap', { cookie });
+  assert.ok(boot.payload.datasets.includes('forensics_final'), 'forensics_final should be awarded');
+  const orangeZone = boot.payload.zones.find((z) => z.id === 'orange');
+  assert.equal(orangeZone.state, 'cleared');
+  const redZone = boot.payload.zones.find((z) => z.id === 'red');
+  assert.equal(redZone.unlocked, true);
+
+  // 4. Verify GET /api/orange/complete works idempotently
+  let getRes = await req('/api/orange/complete?teamId=ORANGE-TEST-01', { method: 'GET', cookie });
+  assert.equal(getRes.response.status, 200);
+  assert.equal(getRes.payload.ok, true);
+
+  // 5. Test service integration with service token (Bearer)
+  const serviceRes = await req('/api/integrations/orange-complete', {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer the-last-dataset-2026-production-service-token-manipal',
+      'x-service-token': 'the-last-dataset-2026-production-service-token-manipal'
+    },
+    body: { teamId: 'ORANGE-TEST-01' }
+  });
+  assert.equal(serviceRes.response.status, 200);
+  assert.equal(serviceRes.payload.ok, true);
 });
 
