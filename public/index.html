@@ -1,199 +1,646 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#080b0e">
-  <meta name="description" content="THE LAST DATASET — a survivor operations hub for the PRALAYA recovery event.">
-  <title>THE LAST DATASET // SURVIVOR NETWORK</title>
-  <link rel="stylesheet" href="/styles.css?v=20261011">
-  <script src="/scene.js" defer></script>
-  <script src="/app.js?v=20261011_sanctuary_v2" defer></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script>
+    if (typeof window !== 'undefined' && window.location.host !== 'the-last-dataset-jqpr.vercel.app') {
+      window.location.replace('https://the-last-dataset-jqpr.vercel.app/');
+    }
+  </script>
+  <title>CHALLENGE COMPLETED // THE LAST DATASET</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800;900&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #03060a;
+      --card-bg: rgba(6, 11, 18, 0.75);
+      --border: rgba(56, 189, 248, 0.25);
+      --cyan: #00f0ff;
+      --amber: #f59e0b;
+      --red: #ff334b;
+      --purple: #a855f7;
+      --green: #10b981;
+      --text-muted: #8899a6;
+      --text-main: #f8fafc;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      width: 100%;
+      min-height: 100vh;
+      background-color: var(--bg);
+      color: var(--text-main);
+      font-family: 'Rajdhani', -apple-system, sans-serif;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* Ambient Background Canvas */
+    #bg-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* CRT Scanlines Overlay */
+    .crt-overlay {
+      position: fixed;
+      inset: 0;
+      background: linear-gradient(
+        rgba(18, 16, 16, 0) 50%, 
+        rgba(0, 0, 0, 0.35) 50%
+      ), linear-gradient(
+        90deg,
+        rgba(255, 0, 0, 0.03),
+        rgba(0, 255, 0, 0.01),
+        rgba(0, 0, 255, 0.03)
+      );
+      background-size: 100% 3px, 6px 100%;
+      pointer-events: none;
+      z-index: 50;
+      opacity: 0.6;
+    }
+
+    /* Vignette */
+    .vignette {
+      position: fixed;
+      inset: 0;
+      box-shadow: inset 0 0 120px rgba(0, 0, 0, 0.95);
+      pointer-events: none;
+      z-index: 51;
+    }
+
+    /* Main Container */
+    .viewport {
+      position: relative;
+      z-index: 10;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 1.5rem;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    /* Top Telemetry Header */
+    .telemetry-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.8rem;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.85rem;
+      color: var(--cyan);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      background: linear-gradient(90deg, rgba(0,240,255,0.05) 0%, transparent 100%);
+      padding-left: 0.5rem;
+    }
+
+    .telemetry-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(255, 51, 75, 0.15);
+      border: 1px solid rgba(255, 51, 75, 0.4);
+      color: var(--red);
+      padding: 0.25rem 0.75rem;
+      border-radius: 2px;
+      font-weight: 700;
+      animation: pulse-red 2s infinite ease-in-out;
+    }
+
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      background-color: var(--red);
+      border-radius: 50%;
+      box-shadow: 0 0 10px var(--red);
+    }
+
+    /* Center Stage / Hero */
+    .hero-stage {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      margin: 2.5rem 0;
+      position: relative;
+    }
+
+    /* Cyber Card Box */
+    .cyber-frame {
+      position: relative;
+      background: var(--card-bg);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      padding: 3rem 2.5rem;
+      border-radius: 4px;
+      box-shadow: 0 0 50px rgba(0, 240, 255, 0.08), inset 0 0 30px rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(12px);
+      max-width: 960px;
+      width: 100%;
+    }
+
+    /* Corner Accents */
+    .corner-bracket {
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      border-color: var(--cyan);
+      border-style: solid;
+      pointer-events: none;
+    }
+    .top-left { top: -2px; left: -2px; border-width: 3px 0 0 3px; }
+    .top-right { top: -2px; right: -2px; border-width: 3px 3px 0 0; }
+    .bottom-left { bottom: -2px; left: -2px; border-width: 0 0 3px 3px; }
+    .bottom-right { bottom: -2px; right: -2px; border-width: 0 3px 3px 0; }
+
+    /* Tactical Eyebrow */
+    .eyebrow {
+      font-family: 'Share Tech Mono', monospace;
+      color: var(--amber);
+      font-size: 0.95rem;
+      letter-spacing: 0.25em;
+      margin-bottom: 1.2rem;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.8rem;
+    }
+    .eyebrow::before, .eyebrow::after {
+      content: "";
+      width: 40px;
+      height: 1px;
+      background: rgba(245, 158, 11, 0.4);
+    }
+
+    /* Massive Main Announcement */
+    .main-title {
+      font-family: 'Orbitron', 'Rajdhani', sans-serif;
+      font-size: clamp(1.8rem, 4.2vw, 3.4rem);
+      font-weight: 900;
+      line-height: 1.2;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #ffffff;
+      text-shadow: 0 0 25px rgba(0, 240, 255, 0.6), 0 0 50px rgba(0, 240, 255, 0.2);
+      margin-bottom: 1.2rem;
+      position: relative;
+    }
+
+    .main-title .highlight {
+      background: linear-gradient(135deg, #00f0ff 0%, #38bdf8 50%, #bc8cff 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      display: block;
+      margin-top: 0.4rem;
+    }
+
+    /* Glitch effect on title */
+    .glitch-text {
+      position: relative;
+      display: inline-block;
+    }
+
+    /* Subtitle description */
+    .sub-manifesto {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: clamp(0.95rem, 1.6vw, 1.2rem);
+      color: #94a3b8;
+      max-width: 780px;
+      margin: 0 auto 2.2rem auto;
+      line-height: 1.7;
+      letter-spacing: 0.04em;
+    }
+
+    .sub-manifesto em {
+      color: #f1f5f9;
+      font-style: normal;
+      font-weight: 600;
+    }
+
+    /* Sector Status Grid */
+    .sectors-bar {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 0.75rem;
+      margin-top: 1.5rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      padding-top: 1.8rem;
+    }
+
+    .sector-node {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 0.8rem 0.5rem;
+      border-radius: 2px;
+      font-family: 'Share Tech Mono', monospace;
+      text-transform: uppercase;
+      transition: all 0.3s ease;
+    }
+
+    .sector-node .name {
+      font-size: 0.75rem;
+      letter-spacing: 0.15em;
+      margin-bottom: 0.3rem;
+      display: block;
+    }
+
+    .sector-node .status {
+      font-size: 0.85rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+    }
+
+    .sector-node[data-sector="yellow"] { border-color: rgba(245, 197, 24, 0.3); }
+    .sector-node[data-sector="yellow"] .name { color: #f5c518; }
+    .sector-node[data-sector="yellow"] .status { color: #fef08a; }
+
+    .sector-node[data-sector="blue"] { border-color: rgba(86, 200, 255, 0.3); }
+    .sector-node[data-sector="blue"] .name { color: #56c8ff; }
+    .sector-node[data-sector="blue"] .status { color: #bae6fd; }
+
+    .sector-node[data-sector="orange"] { border-color: rgba(255, 139, 61, 0.3); }
+    .sector-node[data-sector="orange"] .name { color: #ff8b3d; }
+    .sector-node[data-sector="orange"] .status { color: #fed7aa; }
+
+    .sector-node[data-sector="red"] { border-color: rgba(255, 64, 88, 0.3); }
+    .sector-node[data-sector="red"] .name { color: #ff4058; }
+    .sector-node[data-sector="red"] .status { color: #fecdd3; }
+
+    .sector-node[data-sector="purple"] { border-color: rgba(188, 140, 255, 0.3); }
+    .sector-node[data-sector="purple"] .name { color: #bc8cff; }
+    .sector-node[data-sector="purple"] .status { color: #e9d5ff; }
+
+    /* Audio Waveform Visualizer */
+    .waveform-panel {
+      margin-top: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .waveform-label {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+    }
+
+    #wave-canvas {
+      width: 100%;
+      max-width: 500px;
+      height: 36px;
+    }
+
+    /* Footer Info */
+    .telemetry-footer {
+      border-top: 1px solid var(--border);
+      padding-top: 1rem;
+      margin-top: 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .footer-left {
+      display: flex;
+      align-items: center;
+      gap: 1.2rem;
+    }
+
+    .footer-stamp {
+      color: var(--cyan);
+      font-weight: 700;
+    }
+
+    /* Animations */
+    @keyframes pulse-red {
+      0%, 100% {
+        box-shadow: 0 0 10px rgba(255, 51, 75, 0.2);
+        border-color: rgba(255, 51, 75, 0.4);
+      }
+      50% {
+        box-shadow: 0 0 20px rgba(255, 51, 75, 0.5);
+        border-color: rgba(255, 51, 75, 0.8);
+      }
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .viewport { padding: 1rem; }
+      .cyber-frame { padding: 2rem 1.2rem; }
+      .telemetry-header { flex-direction: column; gap: 0.5rem; text-align: center; }
+      .telemetry-footer { flex-direction: column; text-align: center; justify-content: center; }
+      .sectors-bar { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
 </head>
-<body data-screen="hero" data-quality="high" data-clarity="false">
-  <canvas id="hero-scene" aria-hidden="true"></canvas>
-  <div class="screen-grain" aria-hidden="true"></div>
-  <div class="vignette" aria-hidden="true"></div>
-  <div id="boot-mask" aria-hidden="true"><span class="boot-line">RECOVERING LOCAL SIGNAL</span><span class="boot-coordinates">13°20' N / 74°44' E · PRALAYA DAY 01</span></div>
-  <div id="transition-flash" aria-hidden="true"></div>
-  <div id="notice" class="notice" role="status" aria-live="polite"></div>
+<body>
+  <!-- Ambient Canvas Background -->
+  <canvas id="bg-canvas"></canvas>
 
-  <main id="screen-hero" class="screen hero-screen" aria-labelledby="hero-title">
-    <header class="topbar hero-topbar">
-      <div class="brand-lockup"><span class="brand-mark" aria-label="Last Dataset insignia"><span class="brand-glyph">L<span>/</span>D</span></span><span><b>SURVIVOR NETWORK</b><small>PRALAYA FIELD NODE</small></span></div>
-      <div class="signal-readout"><span class="signal-dot"></span> SURVIVOR NETWORK <span class="signal-divider">/</span> <span id="hero-clock">SIGNAL SEARCHING</span></div>
-      <div class="topbar-right"><button id="hero-sound" class="micro-toggle" aria-pressed="false" aria-label="Enable ambient audio">◖ SOUND OFF</button><button id="clarity-toggle" class="micro-toggle" aria-pressed="false" aria-label="Toggle reduced effects">◌ CLARITY</button></div>
-    </header>
-    <div class="hero-scratch scratch-one" aria-hidden="true">DON'T TRUST THE DATA</div>
-    <div class="hero-scratch scratch-two" aria-hidden="true">IT'S STILL LISTENING</div>
-    <div class="hero-scratch scratch-three" aria-hidden="true">WE WERE NEVER ALONE</div>
-    <div class="hero-content">
-      <div class="hero-eyebrow"><span class="eyebrow-line"></span> SURVIVOR TRANSMISSION · ARCHIVE 00 <span class="eyebrow-line"></span></div>
-      <div class="title-wrap" id="title-wrap">
-        <p class="pre-title">WHEN THE WORLD FORGOT</p>
-        <h1 id="hero-title" class="infected-title" data-text="THE LAST DATASET">THE LAST <span>DATASET</span></h1>
-        <div class="title-coordinate"><span>ARCHIVE 00-PRALAYA</span><span>24H · DATA FORENSICS / ML-CTF</span></div>
+  <!-- CRT Scanlines and Edge Vignette -->
+  <div class="crt-overlay"></div>
+  <div class="vignette"></div>
+
+  <!-- Content Viewport -->
+  <div class="viewport">
+    
+    <!-- Top System Telemetry -->
+    <header class="telemetry-header">
+      <div>
+        <span>SURVIVOR NETWORK // CENTRAL COMMAND</span>
+        <span style="opacity: 0.4; margin: 0 0.5rem;">|</span>
+        <span style="color: var(--text-muted);">FREQ: 142.800 MHz</span>
       </div>
-      <div class="transmission"><span class="transmission-mark">TX //</span><p id="transmission-text">If you're receiving this, the world hasn't finished dying.</p><span class="transmission-cursor">▋</span></div>
-      <p class="hero-copy">The datasets are broken. The infected are moving. The Sanctuary is still holding.<br><span>Recover what remains. Keep the signal alive.</span></p>
-      <button id="enter-sanctuary" class="gate-button"><span class="gate-light"></span><span class="gate-icon">↘</span><span class="gate-label"><b>ENTER THE SANCTUARY</b><small>IDENTIFICATION REQUIRED · PROCEED AT YOUR OWN RISK</small></span><span class="gate-arrow">→</span></button>
-      <div class="hero-meta"><span><b>01</b> SAFE ZONE: SANCTUARY</span><span><b>05</b> QUARANTINED REGIONS</span><span><b>∞</b> DATA LOST</span></div>
-    </div>
-    <div class="hero-bottom"><span>PRALAYA // POST-COLLAPSE ARCHIVE</span><span class="heartbeat-readout"><i></i> VITAL SIGNAL <b>WEAK / PERSISTENT</b></span><span>PRALAYA · SURVIVOR NETWORK</span></div>
-    <div class="torch-reticle" aria-hidden="true"><span></span></div>
-  </main>
+      <div class="telemetry-badge">
+        <span class="pulse-dot"></span>
+        <span>ACCESS FROZEN // EVENT CONCLUDED</span>
+      </div>
+    </header>
 
-  <main id="screen-registration" class="screen registration-screen" aria-labelledby="registration-title" hidden>
-    <header class="topbar"><button class="back-link" id="reg-back">← BACK TO THE SIGNAL</button><div class="signal-readout"><span class="signal-dot"></span> SANCTUARY GATE 01 <span class="signal-divider">/</span> IDENTITY SCAN</div><span class="topbar-code">SECURITY LEVEL: SURVIVOR</span></header>
-    <div class="checkin-layout">
-      <section class="gate-art" aria-label="Sanctuary gate scanner illustration">
-        <div class="gate-halo halo-a"></div><div class="gate-halo halo-b"></div>
-        <div class="gate-structure"><div class="gate-pillar left-pillar"><i></i><i></i><i></i></div><div class="gate-door"><div class="door-cross"></div><div class="scan-beam"></div><span class="door-stencil">SANCTUARY</span><span class="door-number">01</span></div><div class="gate-pillar right-pillar"><i></i><i></i><i></i></div></div>
-        <div class="scanner-console"><span class="scanner-led"></span><span class="scanner-lines"></span><b>BIOMETRIC AUTH // ID 04</b><small>AWAITING SURVIVOR CREDENTIALS</small></div>
-        <div class="gate-ground"></div><div class="gate-coordinate">SAFE PERIMETER · 00.01</div>
-      </section>
-      <section class="registration-panel">
-        <div class="panel-kicker"><span class="red-pip"></span> SANCTUARY CHECK-IN / PROTOCOL A-01</div>
-        <h2 id="registration-title">YOU MADE<br><em>IT THIS FAR.</em></h2>
-        <p class="registration-intro">The gate doesn't care who you were. It needs to know who is still out there.</p>
-        <form id="registration-form" autocomplete="on" novalidate>
-          <label class="terminal-label" for="team-id">TEAM ID <span>REQUIRED</span></label>
-          <div class="input-wrap"><span class="input-prefix">ID //</span><input id="team-id" name="teamId" autocomplete="username" minlength="3" maxlength="32" placeholder="E.G. TECHTEAM10328" required><span class="input-status">⌁</span></div>
-          <p class="field-hint">ASSIGNED TECHTATVA TEAM ID</p>
+    <!-- Main Stage Frame -->
+    <main class="hero-stage">
+      <div class="cyber-frame">
+        <!-- Corner Brackets -->
+        <div class="corner-bracket top-left"></div>
+        <div class="corner-bracket top-right"></div>
+        <div class="corner-bracket bottom-left"></div>
+        <div class="corner-bracket bottom-right"></div>
 
-          <label class="terminal-label" for="delegate-id">DELEGATE ID <span>REQUIRED</span></label>
-          <div class="input-wrap"><span class="input-prefix">DELEGATE //</span><input id="delegate-id" name="delegateId" autocomplete="off" minlength="3" maxlength="12" placeholder="E.G. 12331" required><span class="input-status">⌁</span></div>
-          <p class="field-hint">INDIVIDUAL PLAYER IDENTIFIER (PLAYER 1 OR 2)</p>
-
-          <label class="terminal-label" for="team-passcode">ACCESS PASSCODE <span>REQUIRED</span></label>
-          <div class="input-wrap"><span class="input-prefix">PASS //</span><input id="team-passcode" name="teamPasscode" type="password" autocomplete="current-password" placeholder="SENT TO LEADER MOBILE" required><span class="input-status">⌁</span></div>
-          <p class="field-hint">FIXED SECURITY CODE SENT TO LEADER'S MOBILE NUMBER</p>
-
-          <p id="registration-error" class="form-error" role="alert" hidden></p>
-          <button id="scan-submit" class="gate-button register-submit" type="submit"><span class="gate-light"></span><span class="gate-icon">⌁</span><span class="gate-label"><b>VERIFY & ENTER SANCTUARY</b><small>AUTHENTICATE CREDENTIALS · OPEN GATE</small></span><span class="gate-arrow">→</span></button>
-        </form>
-        <div id="dog-tag" class="dog-tag" aria-live="polite"><div class="tag-hole"></div><small>SURVIVOR // IDENTITY</small><strong id="tag-team-name">UNIDENTIFIED</strong><span id="tag-team-id">ID: ————</span><div class="tag-barcode">|||| ||| || |||| |||</div></div>
-        <p class="privacy-note">SECURED WITH MAHE CENTRAL DATABASE · MULTI-PLAYER CONCURRENCY ENABLED.</p>
-      </section>
-    </div>
-    <footer class="registration-footer"><span>KEEP YOUR TEAM ID AND CALLSIGN CONSISTENT.</span><span>NO ONE LEFT BEHIND / NO DATA LEFT UNRECOVERED</span></footer>
-  </main>
-
-  <main id="screen-map" class="screen map-screen" aria-label="World map" hidden>
-    <header class="map-topbar"><div class="map-brand"><span class="brand-mark" aria-label="Last Dataset insignia"><span class="brand-glyph">L<span>/</span>D</span></span><span><b>THE LAST DATASET</b><small>TACTICAL WORLD MAP // PRALAYA</small></span></div><div class="map-top-status"><span id="topbar-team-info" class="topbar-team-pill" style="display:flex;align-items:center;gap:7px;padding:4px 10px;border-radius:3px;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.4);color:#fca5a5;font-size:9px;font-weight:700;letter-spacing:0.08em;"><span class="signal-dot" id="topbar-signal-dot" style="width:6px;height:6px;border-radius:50%;background:#ef4444;box-shadow:0 0 6px #ef4444;"></span><span id="topbar-team-text">NOT AUTHENTICATED</span></span><i></i><span class="signal-dot"></span><span id="map-network-status">LOCAL NETWORK SECURE</span><i></i><span id="map-clock">00:00:00</span></div><button id="map-fullscreen" class="icon-control" aria-label="Toggle fullscreen" title="Fullscreen">⛶</button></header>
-    <div id="map-stage" class="map-stage">
-      <svg id="world-map" class="world-map" viewBox="0 0 1200 760" preserveAspectRatio="xMidYMid meet" role="group" aria-label="PRALAYA world map with Sanctuary and five quarantined zones">
-        <defs>
-          <linearGradient id="land" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#1a2826"/><stop offset=".5" stop-color="#121b1c"/><stop offset="1" stop-color="#0b1013"/></linearGradient>
-          <linearGradient id="water" x1="0" y1="0" x2="1" y2=".7"><stop stop-color="#132832"/><stop offset="1" stop-color="#080f14"/></linearGradient>
-          <radialGradient id="safe-glow"><stop stop-color="#e5b96e" stop-opacity=".28"/><stop offset="1" stop-color="#e5b96e" stop-opacity="0"/></radialGradient>
-          <filter id="zone-glow" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="5" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-          <pattern id="map-grid" width="36" height="36" patternUnits="userSpaceOnUse"><path d="M36 0H0V36" fill="none" stroke="#93a8a0" stroke-opacity=".055" stroke-width="1"/></pattern>
-          <pattern id="map-noise" width="87" height="81" patternUnits="userSpaceOnUse"><circle cx="13" cy="29" r="1" fill="#b4c0b5" fill-opacity=".22"/><circle cx="61" cy="65" r="1.4" fill="#89928e" fill-opacity=".19"/><path d="M40 10l8 0m20 30l-5 4" stroke="#d3d6c8" stroke-opacity=".13"/></pattern>
-          <marker id="road-arrow" markerWidth="7" markerHeight="7" refX="3" refY="3" orient="auto"><path d="M0 0L6 3L0 6Z" fill="#e2c58b"/></marker>
-        </defs>
-        <rect width="1200" height="760" fill="url(#land)"/>
-        <path d="M0 0H365L322 76 376 125 303 184 350 251 292 295 333 369 257 427 291 491 214 557 250 619 181 681 214 760H0Z" fill="#222a26" opacity=".63"/>
-        <path d="M1200 0H952L921 61 975 113 907 175 959 220 896 271 941 331 875 386 922 451 856 514 922 572 879 633 919 689 886 760H1200Z" fill="#252a25" opacity=".52"/>
-        <path d="M0 587Q148 537 212 575T381 630T554 610L671 760H0Z" fill="url(#water)" opacity=".95"/>
-        <path d="M1200 113Q1065 172 1096 252T1032 399T1114 514T1086 664L1200 701Z" fill="url(#water)" opacity=".86"/>
-        <path d="M0 126L172 170 203 244 141 299 180 366 94 422M0 452L125 430 162 477 132 530 218 597M1200 88L1050 142 1014 206 1072 265 1021 347M1200 443L1092 430 1022 478 1050 556 985 621" fill="none" stroke="#54605a" stroke-opacity=".22" stroke-width="3"/>
-        <path d="M0 0H1200V760H0Z" fill="url(#map-grid)"/><rect width="1200" height="760" fill="url(#map-noise)"/>
-        <g class="map-labels" opacity=".45"><text x="80" y="115">NORTH INDUSTRIAL WARD</text><text x="934" y="125">FLOODLINE // SECTOR 08</text><text x="78" y="692">OUTER PERIMETER · UNSAFE</text><text x="920" y="718">PRALAYA SPREAD INDEX: CRITICAL</text><text x="513" y="725">NO CIVILIAN SIGNALS DETECTED</text></g>
-        <g class="terrain-marks" fill="none" stroke="#6a746a" stroke-opacity=".3" stroke-width="2"><path d="M113 247l24 -10 11 23 -25 7zM188 263l26 -16 18 21 -14 17zM1010 295l18 -20 21 17 -14 24zM1058 594l24 -18 21 22 -23 18zM445 120l22 -14 13 20 -21 15zM739 625l27 -14 17 22 -19 15zM470 632l17 -12 13 20 -17 14z"/></g>
-        <g id="roads" fill="none" stroke-linecap="round" stroke-linejoin="round">
-          <path class="road-bed" d="M600 383Q470 313 348 205M600 383Q714 282 876 182M600 383Q747 433 924 517M600 383Q450 436 312 532M600 383Q624 226 612 76"/>
-          <path class="road-base" d="M600 383Q470 313 348 205M600 383Q714 282 876 182M600 383Q747 433 924 517M600 383Q450 436 312 532M600 383Q624 226 612 76"/>
-          <path id="route-yellow" class="road-lit" d="M600 383Q470 313 348 205"/>
-          <path id="route-blue" class="road-lit" d="M600 383Q714 282 876 182"/>
-          <path id="route-orange" class="road-lit" d="M600 383Q747 433 924 517"/>
-          <path id="route-red" class="road-lit" d="M600 383Q450 436 312 532"/>
-          <path id="route-purple" class="road-lit" d="M600 383Q624 226 612 76"/>
-        </g>
-        <g id="zone-nodes"></g>
-        <g id="sanctuary" class="sanctuary-marker" role="button" tabindex="0" aria-label="Open Sanctuary briefing">
-          <circle cx="600" cy="383" r="132" fill="url(#safe-glow)"/>
-          <circle cx="600" cy="383" r="87" fill="none" stroke="#a4a391" stroke-opacity=".24" stroke-dasharray="4 10"/>
-          <circle cx="600" cy="383" r="69" fill="#0b1112" stroke="#9eaa9d" stroke-width="2" stroke-opacity=".78"/>
-          <circle cx="600" cy="383" r="58" fill="#151f1c" stroke="#d5c190" stroke-opacity=".85" stroke-width="1.5"/>
-          <path d="M552 358l23 -23h50l23 23v47l-23 23h-50l-23 -23z" fill="#252d24" stroke="#a9a58b" stroke-width="2"/>
-          <path d="M575 362h50v42h-50z" fill="#111719" stroke="#e4c788" stroke-width="1.5"/><path d="M600 362v42M575 383h50" stroke="#e4c788" stroke-opacity=".7"/>
-          <g class="searchlight light-left"><path d="M574 337L493 234 535 336Z" fill="#d9c994" opacity=".09"/></g><g class="searchlight light-right"><path d="M625 337L700 238 654 340Z" fill="#d9c994" opacity=".09"/></g>
-          <text x="600" y="457" class="sanctuary-title" text-anchor="middle">THE SANCTUARY</text><text x="600" y="473" class="sanctuary-subtitle" text-anchor="middle">LAST KNOWN SAFE PERIMETER</text>
-          <circle id="traveller-ring" cx="600" cy="383" r="14" fill="none" stroke="#f0cb83" stroke-width="2" opacity=".9"/><circle id="traveller" cx="600" cy="383" r="5" fill="#fff4ce" stroke="#f2c26f" stroke-width="2"/>
-        </g>
-        <g class="map-compass" transform="translate(1108 101)"><circle r="29" fill="#0a1012" fill-opacity=".6" stroke="#6c7970" stroke-opacity=".5"/><path d="M0 -20L6 1 0 -3 -6 1Z" fill="#c9d4c5"/><path d="M0 20L-5 -1 0 3 5 -1Z" fill="#5b6b60"/><text x="0" y="-37" text-anchor="middle">N</text></g>
-        <g class="map-scale" transform="translate(58 721)"><path d="M0 0h100m-100 -5v10m50 -10v10m50 -10v10" stroke="#b0b6a8" stroke-opacity=".7"/><text x="0" y="-10">MAP SCALE // NOT TO SIZE</text></g>
-      </svg>
-      <div class="map-reticle" aria-hidden="true"><span></span></div>
-      <div id="map-tooltip" class="map-tooltip" hidden></div>
-      <div id="map-denied" class="map-denied" hidden><span>×</span><b>ZONE ACCESS LOCKED</b><small id="map-denied-sub">COMPLETE THE SANCTUARY STORYLINE BRIEFING TO ACCESS QUARANTINE ZONES</small></div>
-      <div class="map-vignette" aria-hidden="true"></div>
-      <div id="map-briefing" class="briefing-modal" hidden>
-        <button id="briefing-close" class="modal-close" aria-label="Close briefing">×</button>
-        <p class="panel-kicker">SANCTUARY ZERO // LAST SAFE PERIMETER</p>
-        <h2>THE SIGNAL SURVIVED.</h2>
-        <p>A biological collapse has fragmented the city. Review the complete MANU Protocol transmission in Sanctuary Zero before quarantine access is unlocked.</p>
-        <div class="briefing-rules">
-          <span>01 / ENTER THE SANCTUARY & VIEW FULL STORYLINE</span>
-          <span>02 / PROCEED TO SANCTUARY ZERO SIMULATION</span>
-          <span>03 / COMPLETE SANCTUARY TO UNLOCK QUARANTINE ZONES</span>
+        <!-- Tactical Eyebrow -->
+        <div class="eyebrow">
+          <span>MISSION TELEMETRY TERMINATED</span>
         </div>
-        <div style="display:flex;flex-direction:column;gap:10px;margin-top:16px;">
-          <a id="briefing-storyline-btn" href="https://intro-stroyline.vercel.app/" target="_blank" rel="noopener noreferrer" class="action-button" style="text-decoration:none;display:block;text-align:center;padding:12px;background:#e4c788;color:#000;font-weight:700;letter-spacing:0.08em;">OPEN COMPLETE STORYLINE & SANCTUARY ↗</a>
-          <a id="briefing-gate-btn" href="https://last-dataset-sanc.vercel.app/" target="_blank" rel="noopener noreferrer" class="action-button" style="text-decoration:none;display:block;text-align:center;padding:10px;background:#1a231e;color:#4ade80;border:1px solid #4ade80;font-weight:700;letter-spacing:0.08em;font-size:11px;">ENTER SANCTUARY ZERO 3D GATE ↗</a>
-          <div style="display:flex;gap:10px;">
-            <div id="briefing-gate-indicator" style="flex:1;padding:9px 12px;background:#111815;border:1px solid rgba(228,199,136,0.3);color:#c9baa0;font-size:9px;letter-spacing:0.08em;display:flex;align-items:center;gap:8px;">
-              <span id="briefing-gate-dot" style="width:7px;height:7px;border-radius:50%;background:#ef4444;box-shadow:0 0 6px #ef4444;display:inline-block;flex:none;"></span>
-              <span id="briefing-gate-text">GATE ACCESS LOCKED · SOLVE SANCTUARY CTF</span>
-            </div>
-            <button id="briefing-continue" class="action-button" style="background:#222;color:#eee;flex:none;font-size:10px;padding:9px 16px;">VIEW MAP →</button>
+
+        <!-- Glitch Main Title -->
+        <h1 class="main-title glitch-text" id="glitch-title">
+          CHALLENGE COMPLETED.
+          <span class="highlight">THANK YOU FOR PARTICIPATING IN THE LAST DATASET.</span>
+        </h1>
+
+        <!-- Manifesto Body -->
+        <p class="sub-manifesto">
+          The 24-Hour Recovery Window has closed. All telemetry, dataset reconstructions, and machine-learning evaluation gates have been <em>locked and committed to the immutable archive</em>. Further playing is prohibited with immediate effect.
+        </p>
+
+        <!-- Waveform Visualizer -->
+        <div class="waveform-panel">
+          <div class="waveform-label">CARRIER SIGNAL // TRANSMISSION ARCHIVED</div>
+          <canvas id="wave-canvas"></canvas>
+        </div>
+
+        <!-- Sector Status Lockdown Matrix -->
+        <div class="sectors-bar">
+          <div class="sector-node" data-sector="yellow">
+            <span class="name">Yellow Sector</span>
+            <span class="status">QUARANTINED</span>
+          </div>
+          <div class="sector-node" data-sector="blue">
+            <span class="name">Blue Sector</span>
+            <span class="status">SUBMERGED</span>
+          </div>
+          <div class="sector-node" data-sector="orange">
+            <span class="name">Orange Sector</span>
+            <span class="status">EXTINGUISHED</span>
+          </div>
+          <div class="sector-node" data-sector="red">
+            <span class="name">Red Sector</span>
+            <span class="status">CONTAINED</span>
+          </div>
+          <div class="sector-node" data-sector="purple">
+            <span class="name">Purple Sector</span>
+            <span class="status">SEALED</span>
           </div>
         </div>
       </div>
-    </div>
-    <aside id="survivor-hud" class="survivor-hud" aria-label="Survivor status HUD">
-      <div class="hud-handle"><span class="hud-led"></span><span>TACTICAL TABLET <small>FIELD NETWORK // 01</small></span><button id="hud-collapse" aria-label="Collapse survivor HUD" aria-expanded="true">−</button></div>
-      <div class="hud-body">
-        <div class="survivor-identity"><div class="identity-seal" aria-label="Last Dataset insignia"><span class="identity-glyph">L<span>/</span>D</span></div><div class="identity-copy"><small>SURVIVOR UNIT</small><strong id="hud-team-name">UNIDENTIFIED</strong><span id="hud-team-id">ID: ———</span></div><span class="identity-live">● LIVE</span></div>
-        <div class="progress-block"><div class="progress-ring" id="progress-ring"><svg viewBox="0 0 90 90" aria-hidden="true"><circle cx="45" cy="45" r="36" class="ring-track"/><circle cx="45" cy="45" r="36" class="ring-progress" id="ring-progress"/></svg><div><strong id="progress-value">0/4</strong><small>RECOVERED</small></div></div><div class="progress-label"><b id="progress-heading">THE RECOVERY</b><span id="progress-caption">4 FRAGMENTS REMAIN</span><div class="mini-bar"><i id="progress-bar"></i></div></div></div>
-        <div class="hud-section-head"><span>QUARANTINE SECTORS</span><span id="zones-count">01 / 05</span></div>
-        <div id="hud-zone-list" class="hud-zone-list"></div>
-        <div class="hud-section-head"><span>EARNED DATASET VAULT</span><span id="datasets-count">0 / 4</span></div>
-        <div id="hud-dataset-list" class="hud-dataset-list"></div>
-        <div class="hud-objective"><span class="objective-icon">⌖</span><div><small>CURRENT OBJECTIVE</small><b id="hud-objective-title">ENTER YELLOW ZONE</b><span id="hud-objective-copy">Recover the first surviving data fragments.</span></div></div>
-        <div class="event-timer"><div class="timer-topline"><span>EVENT WINDOW</span><span id="timer-state">SYNCING</span></div><strong id="event-countdown">--:--:--</strong><small id="event-caption">24 HOUR DATA FORENSICS / ML-CTF</small></div>
-        <div class="hud-utilities"><button id="hud-sound" class="utility-toggle" aria-pressed="false">◖ SOUND <b>OFF</b></button><button id="hud-quality" class="utility-toggle" aria-pressed="true">◈ EFFECTS <b>HIGH</b></button><button id="hud-fullscreen" class="utility-toggle" aria-label="Toggle fullscreen">⛶ SCREEN</button></div>
-        <div class="survivor-log-head"><span>SURVIVOR LOG</span><span class="log-live">● REC</span></div><div id="survivor-log" class="survivor-log" aria-live="polite"><p><time>--:--</time> NETWORK INITIALIZED.</p></div>
-        <div class="hud-footer"><span>ENCRYPTED SESSION</span><button id="logout-button">DISCONNECT ↗</button></div>
+    </main>
+
+    <!-- Bottom Telemetry Footer -->
+    <footer class="telemetry-footer">
+      <div class="footer-left">
+        <span class="footer-stamp">PRALAYA CORE ARCHIVE</span>
+        <span>MANIPAL INSTITUTE OF TECHNOLOGY</span>
+        <span>TECHTATVA 2026</span>
       </div>
-    </aside>
-    <button id="hud-expand" class="hud-expand" hidden aria-label="Expand survivor HUD">＋ FIELD HUD</button>
-    <div class="map-bottom-left"><span class="coordinate-cross">+</span><span><b id="map-region-label">REGION 00 / SANCTUARY</b><small id="map-region-subtitle">SECTOR MAP · LIVE RECOVERY FEED</small></span></div>
-    <div class="map-controls">
-      <div style="display:inline-flex;gap:4px;margin-right:8px;">
-        <button id="map-zoom-in" type="button" class="micro-toggle" title="Zoom in" style="padding:4px 8px;font-size:10px;font-weight:bold;line-height:1;">＋</button>
-        <button id="map-zoom-out" type="button" class="micro-toggle" title="Zoom out" style="padding:4px 8px;font-size:10px;font-weight:bold;line-height:1;">−</button>
-        <button id="map-zoom-fit" type="button" class="micro-toggle" title="Fit all zones to screen" style="padding:4px 8px;font-size:7px;letter-spacing:0.1em;line-height:1;">⛶ FIT ALL</button>
+      <div>
+        <span>RECORD INTEGRITY VERIFIED // ALL DATA SECURED</span>
       </div>
-      <i></i>
-      <span>DRAG TO SCAN</span><i></i><span>SCROLL TO ZOOM</span><i></i><span>ENTER TO ACCESS</span>
-    </div>
-    <div id="mobile-notice" class="mobile-notice">BEST VIEWED ON A LARGER SCREEN <span>TACTICAL MAP REMAINS ACCESSIBLE</span></div>
-  </main>
+    </footer>
 
-  <main id="screen-zone" class="screen zone-screen" aria-label="Zone challenge terminals" hidden>
-    <header class="zone-topbar"><button id="zone-back" class="back-link">← WORLD MAP</button><div class="zone-breadcrumb"><span>PRALAYA</span><b>/</b><strong id="zone-heading">YELLOW ZONE</strong></div><div class="zone-top-right"><span id="zone-signal" class="signal-pill">SIGNAL AVAILABLE</span><button id="zone-map-fullscreen" class="icon-control" aria-label="Toggle fullscreen">⛶</button></div></header>
-    <div id="zone-landscape" class="zone-landscape"><div class="zone-scanlines"></div><div class="zone-sun"></div><div class="zone-ridge ridge-one"></div><div class="zone-ridge ridge-two"></div><div class="zone-smoke"></div><div class="zone-content"><div class="zone-coordinates" id="zone-coordinates">SECTOR 01 · INDUSTRIAL QUARANTINE</div><h1 id="zone-title">YELLOW<br><span>ZONE</span></h1><p id="zone-description">The assembly yards still hum beneath the dead power grid.</p><div class="zone-progress-line"><span id="zone-progress-count">0 / 3 DATASETS RECOVERED</span><div><i id="zone-progress-fill"></i></div><b id="zone-progress-percent">00%</b></div></div><div id="zone-terminal-list" class="zone-terminal-list"></div><div class="zone-bottom-note"><span>FIELD TERMINALS // AUTHORIZED ENTRY</span><span id="zone-bottom-state">QUARANTINE STATUS: OPEN</span></div></div>
-  </main>
+  </div>
 
-  <main id="screen-ctf" class="screen ctf-screen" hidden aria-label="Challenge application">
-    <header class="ctf-frame-top"><button id="ctf-back" class="back-link">← BACK TO MAP</button><div class="ctf-frame-title"><span class="signal-dot"></span><div><b id="ctf-frame-ctf">CHALLENGE TERMINAL</b><small id="ctf-frame-zone">ZONE / PRALAYA</small></div></div><span id="ctf-frame-status" class="ctf-status">SIGNAL CONNECTING</span><a id="ctf-new-tab" href="#" target="_blank" rel="noopener noreferrer" class="text-button">OPEN IN NEW TAB ↗</a></header>
-    <div id="ctf-frame-body" class="ctf-frame-body"><div id="ctf-loading" class="ctf-loading"><div class="loading-reticle"></div><p>ACQUIRING REMOTE SIGNAL</p><small>ESTABLISHING A SECURE PATH TO THE CHALLENGE TERMINAL</small></div><div id="ctf-signal-lost" class="ctf-signal-lost" hidden><span class="signal-lost-icon">⌁</span><p class="panel-kicker">FIELD LINK INTERRUPTED</p><h2>SIGNAL LOST</h2><p>The terminal did not answer. Your progress is safe at the hub. Retry the connection or open the challenge in a new tab.</p><div><button id="ctf-retry" class="action-button">RETRY SIGNAL ↻</button><a id="ctf-lost-new-tab" href="#" target="_blank" rel="noopener noreferrer" class="text-button">OPEN EXTERNALLY ↗</a></div></div><iframe id="ctf-iframe" title="CTF challenge" referrerpolicy="no-referrer" sandbox="allow-forms allow-scripts allow-same-origin allow-downloads allow-modals allow-popups allow-popups-to-escape-sandbox" allow="fullscreen" hidden></iframe></div>
-  </main>
+  <script>
+    // -----------------------------------------------------------------
+    // 1. Interactive Radar, Starfield, and Cyber Grid Animation
+    // -----------------------------------------------------------------
+    (function initBackgroundCanvas() {
+      const canvas = document.getElementById('bg-canvas');
+      const ctx = canvas.getContext('2d');
+      let width, height;
 
-  <div id="unlock-cinematic" class="unlock-cinematic" hidden aria-live="assertive"><div class="unlock-shockwave"></div><div class="unlock-content"><span class="unlock-kicker">QUARANTINE BREACH CONFIRMED</span><strong id="unlock-title">BLUE ZONE</strong><p id="unlock-copy">BLUE ZONE QUARANTINE BROKEN</p><button id="unlock-continue" class="action-button">SIGNAL ACKNOWLEDGED →</button></div></div>
-  <div id="finale-cinematic" class="finale-cinematic" hidden aria-live="assertive"><div class="finale-noise"></div><div class="finale-content"><span class="finale-kicker">PRALAYA CORE // DATA RESTORED</span><h2>SURVIVOR<br><em>COMPLETE.</em></h2><p>THE WORLD FORGOT. YOU DIDN'T.</p><button id="finale-continue" class="action-button">RETURN TO THE SANCTUARY →</button></div></div>
-  <footer class="global-credit"><span>THE LAST DATASET</span><span>SURVIVOR OPERATIONS / PRALAYA RECOVERY EVENT</span></footer>
+      function resize() {
+        width = canvas.width = window.innerWidth;
+        height = canvas.height = window.innerHeight;
+      }
+      window.addEventListener('resize', resize);
+      resize();
+
+      // Particle system
+      const PARTICLE_COUNT = 75;
+      const particles = [];
+      for (let i = 0; i < PARTICLE_COUNT; i++) {
+        particles.push({
+          x: Math.random() * width,
+          y: Math.random() * height,
+          vx: (Math.random() - 0.5) * 0.45,
+          vy: (Math.random() - 0.5) * 0.45,
+          size: Math.random() * 1.8 + 0.6,
+          alpha: Math.random() * 0.7 + 0.2,
+          pulse: Math.random() * Math.PI * 2
+        });
+      }
+
+      let radarAngle = 0;
+
+      function draw() {
+        ctx.fillStyle = '#03060a';
+        ctx.fillRect(0, 0, width, height);
+
+        // Cyber Grid Lines (subtle perspective / radar grid)
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.035)';
+        ctx.lineWidth = 1;
+        const gridSize = 50;
+        const offsetX = (Date.now() * 0.005) % gridSize;
+        const offsetY = (Date.now() * 0.005) % gridSize;
+
+        for (let x = offsetX; x < width; x += gridSize) {
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, height);
+          ctx.stroke();
+        }
+        for (let y = offsetY; y < height; y += gridSize) {
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(width, y);
+          ctx.stroke();
+        }
+
+        // Radar Circles from Center
+        const cx = width / 2;
+        const cy = height / 2;
+        const maxRadius = Math.max(width, height) * 0.65;
+
+        for (let r = 120; r < maxRadius; r += 140) {
+          ctx.beginPath();
+          ctx.arc(cx, cy, r, 0, Math.PI * 2);
+          ctx.strokeStyle = 'rgba(0, 240, 255, 0.03)';
+          ctx.stroke();
+        }
+
+        // Radar Sweep Line
+        radarAngle += 0.008;
+        const sweepX = cx + Math.cos(radarAngle) * maxRadius;
+        const sweepY = cy + Math.sin(radarAngle) * maxRadius;
+        const grad = ctx.createRadialGradient(cx, cy, 10, cx, cy, maxRadius);
+        grad.addColorStop(0, 'rgba(0, 240, 255, 0.15)');
+        grad.addColorStop(1, 'rgba(0, 240, 255, 0)');
+
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.arc(cx, cy, maxRadius, radarAngle - 0.25, radarAngle);
+        ctx.lineTo(cx, cy);
+        ctx.fillStyle = grad;
+        ctx.fill();
+
+        // Crosshairs at center
+        ctx.strokeStyle = 'rgba(0, 240, 255, 0.18)';
+        ctx.beginPath();
+        ctx.moveTo(cx - 30, cy); ctx.lineTo(cx + 30, cy);
+        ctx.moveTo(cx, cy - 30); ctx.lineTo(cx, cy + 30);
+        ctx.stroke();
+
+        // Draw and connect particles
+        for (let i = 0; i < particles.length; i++) {
+          const p = particles[i];
+          p.x += p.vx;
+          p.y += p.vy;
+          if (p.x < 0) p.x = width;
+          if (p.x > width) p.x = 0;
+          if (p.y < 0) p.y = height;
+          if (p.y > height) p.y = 0;
+          p.pulse += 0.02;
+
+          const currentAlpha = p.alpha * (0.6 + 0.4 * Math.sin(p.pulse));
+
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(0, 240, 255, ${currentAlpha})`;
+          ctx.fill();
+
+          // Connect nearby particles
+          for (let j = i + 1; j < particles.length; j++) {
+            const p2 = particles[j];
+            const dx = p.x - p2.x;
+            const dy = p.y - p2.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < 100) {
+              ctx.beginPath();
+              ctx.moveTo(p.x, p.y);
+              ctx.lineTo(p2.x, p2.y);
+              ctx.strokeStyle = `rgba(56, 189, 248, ${(1 - dist / 100) * 0.12})`;
+              ctx.stroke();
+            }
+          }
+        }
+
+        requestAnimationFrame(draw);
+      }
+      draw();
+    })();
+
+    // -----------------------------------------------------------------
+    // 2. Audio Transmission Waveform Visualizer
+    // -----------------------------------------------------------------
+    (function initWaveform() {
+      const canvas = document.getElementById('wave-canvas');
+      const ctx = canvas.getContext('2d');
+      canvas.width = 500;
+      canvas.height = 36;
+
+      const bars = 48;
+      let phase = 0;
+
+      function renderWave() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        phase += 0.04;
+
+        const barWidth = canvas.width / bars;
+        for (let i = 0; i < bars; i++) {
+          const distanceToCenter = Math.abs(i - bars / 2) / (bars / 2);
+          const damping = 1 - Math.pow(distanceToCenter, 1.5);
+          
+          // Harmonic wave simulation
+          const h1 = Math.sin(i * 0.35 + phase) * 10;
+          const h2 = Math.cos(i * 0.6 - phase * 1.3) * 6;
+          const h3 = Math.sin(phase * 2 + i * 0.1) * 3;
+          const height = Math.max(3, (Math.abs(h1 + h2 + h3) * damping));
+
+          const x = i * barWidth;
+          const y = (canvas.height - height) / 2;
+
+          const grad = ctx.createLinearGradient(0, y, 0, y + height);
+          grad.addColorStop(0, '#00f0ff');
+          grad.addColorStop(0.5, '#38bdf8');
+          grad.addColorStop(1, '#a855f7');
+
+          ctx.fillStyle = grad;
+          ctx.fillRect(x + 2, y, barWidth - 4, height);
+        }
+        requestAnimationFrame(renderWave);
+      }
+      renderWave();
+    })();
+
+    // -----------------------------------------------------------------
+    // 3. Subtle periodic cyber glitch effect on title
+    // -----------------------------------------------------------------
+    (function initGlitch() {
+      const title = document.getElementById('glitch-title');
+      setInterval(() => {
+        if (!title) return;
+        title.style.transform = `translate(${(Math.random() - 0.5) * 4}px, ${(Math.random() - 0.5) * 3}px)`;
+        title.style.filter = 'drop-shadow(2px 0 #ff0055) drop-shadow(-2px 0 #00ffff)';
+        setTimeout(() => {
+          title.style.transform = 'none';
+          title.style.filter = 'none';
+        }, 120);
+      }, 4200);
+    })();
+  </script>
 </body>
 </html>

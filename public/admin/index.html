@@ -1,509 +1,646 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#07090d">
-  <meta name="description" content="THE LAST DATASET — Central Organizer Command Deck and Admin Dashboard">
-  <title>THE LAST DATASET // COMMAND DECK (ADMIN)</title>
-  <link rel="stylesheet" href="/admin/admin.css?v=20261013_v2">
-  <script src="/admin/admin.js?v=20261013_v2" defer></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script>
+    if (typeof window !== 'undefined' && window.location.host !== 'the-last-dataset-jqpr.vercel.app') {
+      window.location.replace('https://the-last-dataset-jqpr.vercel.app/');
+    }
+  </script>
+  <title>CHALLENGE COMPLETED // THE LAST DATASET</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800;900&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #03060a;
+      --card-bg: rgba(6, 11, 18, 0.75);
+      --border: rgba(56, 189, 248, 0.25);
+      --cyan: #00f0ff;
+      --amber: #f59e0b;
+      --red: #ff334b;
+      --purple: #a855f7;
+      --green: #10b981;
+      --text-muted: #8899a6;
+      --text-main: #f8fafc;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      width: 100%;
+      min-height: 100vh;
+      background-color: var(--bg);
+      color: var(--text-main);
+      font-family: 'Rajdhani', -apple-system, sans-serif;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* Ambient Background Canvas */
+    #bg-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* CRT Scanlines Overlay */
+    .crt-overlay {
+      position: fixed;
+      inset: 0;
+      background: linear-gradient(
+        rgba(18, 16, 16, 0) 50%, 
+        rgba(0, 0, 0, 0.35) 50%
+      ), linear-gradient(
+        90deg,
+        rgba(255, 0, 0, 0.03),
+        rgba(0, 255, 0, 0.01),
+        rgba(0, 0, 255, 0.03)
+      );
+      background-size: 100% 3px, 6px 100%;
+      pointer-events: none;
+      z-index: 50;
+      opacity: 0.6;
+    }
+
+    /* Vignette */
+    .vignette {
+      position: fixed;
+      inset: 0;
+      box-shadow: inset 0 0 120px rgba(0, 0, 0, 0.95);
+      pointer-events: none;
+      z-index: 51;
+    }
+
+    /* Main Container */
+    .viewport {
+      position: relative;
+      z-index: 10;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 1.5rem;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    /* Top Telemetry Header */
+    .telemetry-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.8rem;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.85rem;
+      color: var(--cyan);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      background: linear-gradient(90deg, rgba(0,240,255,0.05) 0%, transparent 100%);
+      padding-left: 0.5rem;
+    }
+
+    .telemetry-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(255, 51, 75, 0.15);
+      border: 1px solid rgba(255, 51, 75, 0.4);
+      color: var(--red);
+      padding: 0.25rem 0.75rem;
+      border-radius: 2px;
+      font-weight: 700;
+      animation: pulse-red 2s infinite ease-in-out;
+    }
+
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      background-color: var(--red);
+      border-radius: 50%;
+      box-shadow: 0 0 10px var(--red);
+    }
+
+    /* Center Stage / Hero */
+    .hero-stage {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      margin: 2.5rem 0;
+      position: relative;
+    }
+
+    /* Cyber Card Box */
+    .cyber-frame {
+      position: relative;
+      background: var(--card-bg);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      padding: 3rem 2.5rem;
+      border-radius: 4px;
+      box-shadow: 0 0 50px rgba(0, 240, 255, 0.08), inset 0 0 30px rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(12px);
+      max-width: 960px;
+      width: 100%;
+    }
+
+    /* Corner Accents */
+    .corner-bracket {
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      border-color: var(--cyan);
+      border-style: solid;
+      pointer-events: none;
+    }
+    .top-left { top: -2px; left: -2px; border-width: 3px 0 0 3px; }
+    .top-right { top: -2px; right: -2px; border-width: 3px 3px 0 0; }
+    .bottom-left { bottom: -2px; left: -2px; border-width: 0 0 3px 3px; }
+    .bottom-right { bottom: -2px; right: -2px; border-width: 0 3px 3px 0; }
+
+    /* Tactical Eyebrow */
+    .eyebrow {
+      font-family: 'Share Tech Mono', monospace;
+      color: var(--amber);
+      font-size: 0.95rem;
+      letter-spacing: 0.25em;
+      margin-bottom: 1.2rem;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.8rem;
+    }
+    .eyebrow::before, .eyebrow::after {
+      content: "";
+      width: 40px;
+      height: 1px;
+      background: rgba(245, 158, 11, 0.4);
+    }
+
+    /* Massive Main Announcement */
+    .main-title {
+      font-family: 'Orbitron', 'Rajdhani', sans-serif;
+      font-size: clamp(1.8rem, 4.2vw, 3.4rem);
+      font-weight: 900;
+      line-height: 1.2;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #ffffff;
+      text-shadow: 0 0 25px rgba(0, 240, 255, 0.6), 0 0 50px rgba(0, 240, 255, 0.2);
+      margin-bottom: 1.2rem;
+      position: relative;
+    }
+
+    .main-title .highlight {
+      background: linear-gradient(135deg, #00f0ff 0%, #38bdf8 50%, #bc8cff 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      display: block;
+      margin-top: 0.4rem;
+    }
+
+    /* Glitch effect on title */
+    .glitch-text {
+      position: relative;
+      display: inline-block;
+    }
+
+    /* Subtitle description */
+    .sub-manifesto {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: clamp(0.95rem, 1.6vw, 1.2rem);
+      color: #94a3b8;
+      max-width: 780px;
+      margin: 0 auto 2.2rem auto;
+      line-height: 1.7;
+      letter-spacing: 0.04em;
+    }
+
+    .sub-manifesto em {
+      color: #f1f5f9;
+      font-style: normal;
+      font-weight: 600;
+    }
+
+    /* Sector Status Grid */
+    .sectors-bar {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 0.75rem;
+      margin-top: 1.5rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      padding-top: 1.8rem;
+    }
+
+    .sector-node {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 0.8rem 0.5rem;
+      border-radius: 2px;
+      font-family: 'Share Tech Mono', monospace;
+      text-transform: uppercase;
+      transition: all 0.3s ease;
+    }
+
+    .sector-node .name {
+      font-size: 0.75rem;
+      letter-spacing: 0.15em;
+      margin-bottom: 0.3rem;
+      display: block;
+    }
+
+    .sector-node .status {
+      font-size: 0.85rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+    }
+
+    .sector-node[data-sector="yellow"] { border-color: rgba(245, 197, 24, 0.3); }
+    .sector-node[data-sector="yellow"] .name { color: #f5c518; }
+    .sector-node[data-sector="yellow"] .status { color: #fef08a; }
+
+    .sector-node[data-sector="blue"] { border-color: rgba(86, 200, 255, 0.3); }
+    .sector-node[data-sector="blue"] .name { color: #56c8ff; }
+    .sector-node[data-sector="blue"] .status { color: #bae6fd; }
+
+    .sector-node[data-sector="orange"] { border-color: rgba(255, 139, 61, 0.3); }
+    .sector-node[data-sector="orange"] .name { color: #ff8b3d; }
+    .sector-node[data-sector="orange"] .status { color: #fed7aa; }
+
+    .sector-node[data-sector="red"] { border-color: rgba(255, 64, 88, 0.3); }
+    .sector-node[data-sector="red"] .name { color: #ff4058; }
+    .sector-node[data-sector="red"] .status { color: #fecdd3; }
+
+    .sector-node[data-sector="purple"] { border-color: rgba(188, 140, 255, 0.3); }
+    .sector-node[data-sector="purple"] .name { color: #bc8cff; }
+    .sector-node[data-sector="purple"] .status { color: #e9d5ff; }
+
+    /* Audio Waveform Visualizer */
+    .waveform-panel {
+      margin-top: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .waveform-label {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+    }
+
+    #wave-canvas {
+      width: 100%;
+      max-width: 500px;
+      height: 36px;
+    }
+
+    /* Footer Info */
+    .telemetry-footer {
+      border-top: 1px solid var(--border);
+      padding-top: 1rem;
+      margin-top: 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .footer-left {
+      display: flex;
+      align-items: center;
+      gap: 1.2rem;
+    }
+
+    .footer-stamp {
+      color: var(--cyan);
+      font-weight: 700;
+    }
+
+    /* Animations */
+    @keyframes pulse-red {
+      0%, 100% {
+        box-shadow: 0 0 10px rgba(255, 51, 75, 0.2);
+        border-color: rgba(255, 51, 75, 0.4);
+      }
+      50% {
+        box-shadow: 0 0 20px rgba(255, 51, 75, 0.5);
+        border-color: rgba(255, 51, 75, 0.8);
+      }
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .viewport { padding: 1rem; }
+      .cyber-frame { padding: 2rem 1.2rem; }
+      .telemetry-header { flex-direction: column; gap: 0.5rem; text-align: center; }
+      .telemetry-footer { flex-direction: column; text-align: center; justify-content: center; }
+      .sectors-bar { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
 </head>
-<body data-admin-state="loading">
-  <!-- Subtle scanline / atmosphere layer -->
-  <div class="deck-scanlines" aria-hidden="true"></div>
-  <div class="deck-grid-bg" aria-hidden="true"></div>
+<body>
+  <!-- Ambient Canvas Background -->
+  <canvas id="bg-canvas"></canvas>
 
-  <!-- AUTHENTICATION GATE (Shown when unauthenticated) -->
-  <div id="auth-gate" class="auth-gate" hidden>
-    <div class="auth-panel">
-      <div class="auth-header">
-        <div class="brand-lockup">
-          <span class="brand-mark"><span class="brand-glyph">L<span>/</span>D</span></span>
-          <div class="brand-titles">
-            <h1>COMMAND DECK</h1>
-            <small>THE LAST DATASET // RESTRICTED ACCESS</small>
-          </div>
-        </div>
-        <span class="security-level">SEC-LEVEL: ORGANIZER 01</span>
+  <!-- CRT Scanlines and Edge Vignette -->
+  <div class="crt-overlay"></div>
+  <div class="vignette"></div>
+
+  <!-- Content Viewport -->
+  <div class="viewport">
+    
+    <!-- Top System Telemetry -->
+    <header class="telemetry-header">
+      <div>
+        <span>SURVIVOR NETWORK // CENTRAL COMMAND</span>
+        <span style="opacity: 0.4; margin: 0 0.5rem;">|</span>
+        <span style="color: var(--text-muted);">FREQ: 142.800 MHz</span>
       </div>
-
-      <div class="auth-body">
-        <div class="auth-icon-wrap">
-          <span class="auth-icon">🔒</span>
-        </div>
-        <h2>AUTHORIZATION REQUIRED</h2>
-        <p class="auth-desc">Access to live competition data, team progression, score ledgers, and ML submissions requires organizer authentication.</p>
-
-        <form id="admin-login-form" novalidate autocomplete="off">
-          <label class="input-label" for="admin-key-input">ADMIN MASTER KEY</label>
-          <div class="input-wrap">
-            <span class="input-prefix">KEY //</span>
-            <input id="admin-key-input" type="password" placeholder="Enter admin master key…" required autofocus autocomplete="current-password">
-            <button type="button" id="toggle-key-visibility" class="toggle-visibility" title="Toggle visibility">👁</button>
-          </div>
-
-          <div id="auth-error-banner" class="alert-banner alert-error" role="alert" hidden>
-            <span class="alert-icon">⚠</span>
-            <span id="auth-error-text">Authentication failed.</span>
-          </div>
-
-          <button id="auth-submit-btn" type="submit" class="btn btn-primary btn-block">
-            <span class="btn-glow"></span>
-            <span class="btn-text">UNLOCK COMMAND DECK →</span>
-          </button>
-        </form>
-      </div>
-
-      <div class="auth-footer">
-        <span>CENTRAL BACKEND AUTHORIZATION · NO SECRETS STORED CLIENT-SIDE</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- MAIN ADMIN APPLICATION (Shown when authenticated) -->
-  <div id="admin-app" class="admin-app" hidden>
-    <!-- TOP NAVIGATION BAR -->
-    <header class="deck-topbar">
-      <div class="topbar-left">
-        <a href="/" class="home-link" title="Return to Survivor Network Hub">
-          <span class="brand-glyph">L/D</span>
-        </a>
-        <div class="deck-titles">
-          <div class="title-row">
-            <h2>COMMAND DECK</h2>
-            <span class="badge badge-purple">ADMIN CONSOLE</span>
-            <span class="badge badge-live"><span class="pulse-dot"></span> LIVE</span>
-          </div>
-          <p class="subtitle">THE LAST DATASET · REAL-TIME PARTICIPANT PROGRESSION & EVALUATION</p>
-        </div>
-      </div>
-
-      <div class="topbar-center">
-        <div class="clock-display">
-          <span class="clock-label">UTC TIME:</span>
-          <span id="clock-utc" class="clock-val">--:--:--</span>
-          <span class="clock-divider">|</span>
-          <span class="clock-label">LOCAL:</span>
-          <span id="clock-local" class="clock-val">--:--:--</span>
-        </div>
-      </div>
-
-      <div class="topbar-right">
-        <div class="refresh-controls">
-          <span id="last-refreshed-label" class="last-refreshed">Connecting…</span>
-          <button id="manual-refresh-btn" class="btn btn-secondary btn-sm" title="Refresh Now (Hot-key: R)">
-            <span class="refresh-icon">↻</span> Refresh
-          </button>
-          <div class="auto-refresh-select-wrap">
-            <label for="auto-refresh-select" class="sr-only">Auto Refresh</label>
-            <select id="auto-refresh-select" class="select-sm" title="Auto-refresh interval">
-              <option value="0">Auto: OFF</option>
-              <option value="15" selected>Auto: 15s</option>
-              <option value="30">Auto: 30s</option>
-              <option value="60">Auto: 60s</option>
-            </select>
-          </div>
-        </div>
-
-        <button id="export-csv-btn" class="btn btn-primary btn-sm" title="Export team progression to CSV">
-          <span>⤓</span> Export CSV
-        </button>
-
-        <button id="admin-logout-btn" class="btn btn-danger btn-sm" title="Log out of Admin Console">
-          Sign Out
-        </button>
+      <div class="telemetry-badge">
+        <span class="pulse-dot"></span>
+        <span>ACCESS FROZEN // EVENT CONCLUDED</span>
       </div>
     </header>
 
-    <!-- MAIN DASHBOARD CONTENT -->
-    <main class="deck-main">
-      <!-- GLOBAL ERROR / WARNING BANNER -->
-      <div id="deck-error-banner" class="alert-banner alert-error" role="alert" hidden>
-        <span class="alert-icon">⚠</span>
-        <div class="alert-content">
-          <strong id="deck-error-title">Data Fetch Error</strong>
-          <p id="deck-error-msg">Failed to query /api/admin/overview.</p>
+    <!-- Main Stage Frame -->
+    <main class="hero-stage">
+      <div class="cyber-frame">
+        <!-- Corner Brackets -->
+        <div class="corner-bracket top-left"></div>
+        <div class="corner-bracket top-right"></div>
+        <div class="corner-bracket bottom-left"></div>
+        <div class="corner-bracket bottom-right"></div>
+
+        <!-- Tactical Eyebrow -->
+        <div class="eyebrow">
+          <span>MISSION TELEMETRY TERMINATED</span>
         </div>
-        <button id="deck-error-retry" class="btn btn-secondary btn-xs">Retry</button>
+
+        <!-- Glitch Main Title -->
+        <h1 class="main-title glitch-text" id="glitch-title">
+          CHALLENGE COMPLETED.
+          <span class="highlight">THANK YOU FOR PARTICIPATING IN THE LAST DATASET.</span>
+        </h1>
+
+        <!-- Manifesto Body -->
+        <p class="sub-manifesto">
+          The 24-Hour Recovery Window has closed. All telemetry, dataset reconstructions, and machine-learning evaluation gates have been <em>locked and committed to the immutable archive</em>. Further playing is prohibited with immediate effect.
+        </p>
+
+        <!-- Waveform Visualizer -->
+        <div class="waveform-panel">
+          <div class="waveform-label">CARRIER SIGNAL // TRANSMISSION ARCHIVED</div>
+          <canvas id="wave-canvas"></canvas>
+        </div>
+
+        <!-- Sector Status Lockdown Matrix -->
+        <div class="sectors-bar">
+          <div class="sector-node" data-sector="yellow">
+            <span class="name">Yellow Sector</span>
+            <span class="status">QUARANTINED</span>
+          </div>
+          <div class="sector-node" data-sector="blue">
+            <span class="name">Blue Sector</span>
+            <span class="status">SUBMERGED</span>
+          </div>
+          <div class="sector-node" data-sector="orange">
+            <span class="name">Orange Sector</span>
+            <span class="status">EXTINGUISHED</span>
+          </div>
+          <div class="sector-node" data-sector="red">
+            <span class="name">Red Sector</span>
+            <span class="status">CONTAINED</span>
+          </div>
+          <div class="sector-node" data-sector="purple">
+            <span class="name">Purple Sector</span>
+            <span class="status">SEALED</span>
+          </div>
+        </div>
       </div>
-
-      <!-- 1. LIVE METRICS ROW -->
-      <section class="metrics-grid" aria-label="Competition Live Metrics">
-        <!-- Metric 1: Registered Teams -->
-        <div class="metric-card">
-          <div class="metric-header">
-            <span class="metric-tag">PARTICIPANTS</span>
-            <span class="metric-icon">👥</span>
-          </div>
-          <div class="metric-body">
-            <div id="metric-registered-teams" class="metric-value">--</div>
-            <div class="metric-label">Registered Teams</div>
-          </div>
-          <div class="metric-footer">
-            <span id="metric-registered-sub" class="metric-sub">Authoritative roster count</span>
-          </div>
-        </div>
-
-        <!-- Metric 2: Active Teams -->
-        <div class="metric-card">
-          <div class="metric-header">
-            <span class="metric-tag">ENGAGEMENT</span>
-            <span class="metric-icon">⚡</span>
-          </div>
-          <div class="metric-body">
-            <div id="metric-active-teams" class="metric-value metric-amber">--</div>
-            <div class="metric-label">Active Teams</div>
-          </div>
-          <div class="metric-footer">
-            <span id="metric-active-sub" class="metric-sub">In progress & scoring</span>
-          </div>
-        </div>
-
-        <!-- Metric 3: Completed Teams -->
-        <div class="metric-card">
-          <div class="metric-header">
-            <span class="metric-tag">SURVIVORS</span>
-            <span class="metric-icon">🏆</span>
-          </div>
-          <div class="metric-body">
-            <div id="metric-completed-teams" class="metric-value metric-green">--</div>
-            <div class="metric-label">Completed Teams</div>
-          </div>
-          <div class="metric-footer">
-            <span id="metric-completed-sub" class="metric-sub">Full clear · 3,100 pts</span>
-          </div>
-        </div>
-
-        <!-- Metric 4: Points Awarded -->
-        <div class="metric-card">
-          <div class="metric-header">
-            <span class="metric-tag">SCORING TOTAL</span>
-            <span class="metric-icon">🎖</span>
-          </div>
-          <div class="metric-body">
-            <div id="metric-points-awarded" class="metric-value metric-purple">--</div>
-            <div class="metric-label">Points Awarded</div>
-          </div>
-          <div class="metric-footer">
-            <span id="metric-points-sub" class="metric-sub">Live competition ledger sum</span>
-          </div>
-        </div>
-
-        <!-- Metric 5: Purple Submissions -->
-        <div class="metric-card metric-card-secondary">
-          <div class="metric-header">
-            <span class="metric-tag">ML EVALUATION</span>
-            <span class="metric-icon">🔬</span>
-          </div>
-          <div class="metric-body">
-            <div id="metric-ml-submissions" class="metric-value metric-cyan">--</div>
-            <div class="metric-label">ML Submissions Processed</div>
-          </div>
-          <div class="metric-footer">
-            <span class="metric-sub">Survival predictions · Max 10/team</span>
-          </div>
-        </div>
-      </section>
-
-      <!-- 2. FILTER & SEARCH TOOLBAR -->
-      <section class="toolbar-section" aria-label="Table Filters and Search">
-        <div class="search-box">
-          <span class="search-icon">🔍</span>
-          <input id="team-search-input" type="search" placeholder="Search by Team ID, team name, member name, delegate ID, or college…" aria-label="Search teams">
-          <button id="clear-search-btn" class="clear-search-btn" title="Clear search" hidden>×</button>
-        </div>
-
-        <div class="filter-controls">
-          <div class="filter-group">
-            <label for="filter-stage" class="filter-label">Stage:</label>
-            <select id="filter-stage" class="select-filter">
-              <option value="all">All Stages</option>
-              <option value="sanctuary">Sanctuary</option>
-              <option value="yellow">Yellow</option>
-              <option value="blue">Blue</option>
-              <option value="orange">Orange</option>
-              <option value="red">Red</option>
-              <option value="purple">Purple</option>
-              <option value="completed">Completed</option>
-            </select>
-          </div>
-
-          <div class="filter-group">
-            <label for="filter-student-type" class="filter-label">Type:</label>
-            <select id="filter-student-type" class="select-filter">
-              <option value="all">All Types</option>
-              <option value="MAHE">MAHE</option>
-              <option value="NONMAHE">NONMAHE</option>
-            </select>
-          </div>
-
-          <div class="filter-group">
-            <label for="filter-roster" class="filter-label">Roster:</label>
-            <select id="filter-roster" class="select-filter">
-              <option value="all">All Rosters</option>
-              <option value="2">2 Players (Full)</option>
-              <option value="1">1 Player (Solo)</option>
-            </select>
-          </div>
-
-          <button id="reset-filters-btn" class="btn btn-ghost btn-xs" title="Reset all filters">
-            Reset Filters
-          </button>
-        </div>
-
-        <div class="toolbar-meta">
-          <span id="teams-count-pill" class="count-pill">Showing 0 / 0 teams</span>
-        </div>
-      </section>
-
-      <!-- 3. SEARCHABLE TEAM TABLE -->
-      <section class="table-container" aria-label="Teams Table">
-        <table id="teams-table" class="deck-table">
-          <thead>
-            <tr>
-              <th scope="col" class="th-sortable" data-sort="id">Team ID & Name</th>
-              <th scope="col" class="th-sortable" data-sort="members">Members</th>
-              <th scope="col" class="th-sortable" data-sort="stage">Stage & Progress</th>
-              <th scope="col" class="th-sortable" data-sort="score">Total Score (3,100)</th>
-              <th scope="col" class="th-sortable" data-sort="activity">Last Activity</th>
-              <th scope="col" class="th-action">Action</th>
-            </tr>
-          </thead>
-          <tbody id="teams-tbody">
-            <!-- Dynamic rows rendered via JavaScript -->
-            <tr class="loading-row">
-              <td colspan="6">
-                <div class="table-loading-spinner">
-                  <span class="spinner-circle"></span>
-                  <span>Loading authoritative participant teams…</span>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-
-        <!-- Empty state when no matches -->
-        <div id="table-empty-state" class="empty-state" hidden>
-          <div class="empty-icon">🔎</div>
-          <h3>No matching teams found</h3>
-          <p>Try adjusting your search terms or clearing active filters.</p>
-          <button id="empty-clear-btn" class="btn btn-secondary btn-sm">Clear All Filters</button>
-        </div>
-      </section>
     </main>
 
-    <!-- FOOTER -->
-    <footer class="deck-footer">
+    <!-- Bottom Telemetry Footer -->
+    <footer class="telemetry-footer">
       <div class="footer-left">
-        <span>THE LAST DATASET · TECHTATVA 2026 // MAHE MANIPAL</span>
-        <span class="divider">/</span>
-        <span>COMMAND DECK · LIVE COMPETITION CONSOLE</span>
+        <span class="footer-stamp">PRALAYA CORE ARCHIVE</span>
+        <span>MANIPAL INSTITUTE OF TECHNOLOGY</span>
+        <span>TECHTATVA 2026</span>
       </div>
-      <div class="footer-right">
-        <span id="footer-system-status">● CENTRAL DATABASE CONNECTED</span>
+      <div>
+        <span>RECORD INTEGRITY VERIFIED // ALL DATA SECURED</span>
       </div>
     </footer>
+
   </div>
 
-  <!-- 4. INDIVIDUAL TEAM DETAIL MODAL / DRAWER -->
-  <div id="team-modal-backdrop" class="modal-backdrop" hidden>
-    <div id="team-detail-modal" class="modal-content" role="dialog" aria-modal="true" aria-labelledby="modal-team-title">
-      <!-- Modal Header -->
-      <div class="modal-header">
-        <div class="modal-title-wrap">
-          <div class="modal-badges">
-            <span id="modal-team-id-badge" class="badge badge-id">TEAM-ID</span>
-            <span id="modal-student-type-badge" class="badge badge-subtle">MAHE</span>
-            <span id="modal-stage-badge" class="badge badge-stage">STAGE</span>
-            <span id="modal-integrity-badge" class="badge badge-integrity" hidden></span>
-          </div>
-          <h2 id="modal-team-title">Team Name</h2>
-          <p id="modal-team-created" class="modal-created">Registered: --</p>
-        </div>
-        <button id="modal-close-btn" class="modal-close" aria-label="Close team detail">✕</button>
-      </div>
+  <script>
+    // -----------------------------------------------------------------
+    // 1. Interactive Radar, Starfield, and Cyber Grid Animation
+    // -----------------------------------------------------------------
+    (function initBackgroundCanvas() {
+      const canvas = document.getElementById('bg-canvas');
+      const ctx = canvas.getContext('2d');
+      let width, height;
 
-      <!-- Modal Body -->
-      <div class="modal-body">
-        <!-- Inconsistency Alert Banner (if any) -->
-        <div id="modal-inconsistencies-banner" class="alert-banner alert-warning" hidden>
-          <span class="alert-icon">⚠</span>
-          <div class="alert-content">
-            <strong>Progression Inconsistencies Detected</strong>
-            <ul id="modal-inconsistencies-list" class="inconsistencies-list"></ul>
-          </div>
-        </div>
+      function resize() {
+        width = canvas.width = window.innerWidth;
+        height = canvas.height = window.innerHeight;
+      }
+      window.addEventListener('resize', resize);
+      resize();
 
-        <!-- Grid: Roster Cards & Scoring Summary -->
-        <div class="detail-two-col">
-          <!-- Roster Inspection Card -->
-          <div class="detail-card">
-            <div class="detail-card-header">
-              <h3>👥 REGISTERED ROSTER & CREDENTIALS</h3>
-              <span id="modal-roster-cap-pill" class="badge badge-cap">2 / 2 Players</span>
-            </div>
-            <div class="detail-card-body">
-              <div id="modal-roster-list" class="roster-grid">
-                <!-- Injected via JavaScript -->
-              </div>
-              <div class="team-credentials-block">
-                <div class="credential-item">
-                  <span class="contact-label">Access Passcode:</span>
-                  <div class="passcode-copy-row">
-                    <code id="modal-team-passcode" class="passcode-val">--</code>
-                    <button id="modal-copy-passcode-btn" type="button" class="btn btn-secondary btn-xs" title="Copy Access Passcode">📋 Copy</button>
-                  </div>
-                </div>
-                <div class="credential-item">
-                  <span class="contact-label">College:</span>
-                  <span id="modal-team-college" class="contact-value">--</span>
-                </div>
-                <div class="credential-item">
-                  <span class="contact-label">Leader Phone:</span>
-                  <span id="modal-leader-phone" class="contact-value">--</span>
-                </div>
-                <div class="credential-item">
-                  <span class="contact-label">Leader Email:</span>
-                  <span id="modal-leader-email" class="contact-value">--</span>
-                </div>
-              </div>
-            </div>
-          </div>
+      // Particle system
+      const PARTICLE_COUNT = 75;
+      const particles = [];
+      for (let i = 0; i < PARTICLE_COUNT; i++) {
+        particles.push({
+          x: Math.random() * width,
+          y: Math.random() * height,
+          vx: (Math.random() - 0.5) * 0.45,
+          vy: (Math.random() - 0.5) * 0.45,
+          size: Math.random() * 1.8 + 0.6,
+          alpha: Math.random() * 0.7 + 0.2,
+          pulse: Math.random() * Math.PI * 2
+        });
+      }
 
-          <!-- Total Score Summary Card -->
-          <div class="detail-card">
-            <div class="detail-card-header">
-              <h3>🎖 TOTAL SCORE BREAKDOWN</h3>
-              <span id="modal-score-total-pill" class="badge badge-purple">0 / 3,100 PTS</span>
-            </div>
-            <div class="detail-card-body">
-              <div class="score-progress-wrap">
-                <div class="score-progress-bar">
-                  <div id="modal-score-progress-fill" class="score-progress-fill" style="width: 0%;"></div>
-                </div>
-                <div class="score-progress-labels">
-                  <span id="modal-score-pct">0% Complete</span>
-                  <span>Canonical Max: 3,100 PTS</span>
-                </div>
-              </div>
+      let radarAngle = 0;
 
-              <!-- Quick Stage Points Strip -->
-              <div class="stage-points-strip">
-                <div class="stage-point-chip" data-zone="sanctuary">
-                  <span class="chip-label">Sanctuary</span>
-                  <span class="chip-pts">+100</span>
-                  <span id="modal-pts-sanctuary" class="chip-status">--</span>
-                </div>
-                <div class="stage-point-chip" data-zone="yellow">
-                  <span class="chip-label">Yellow</span>
-                  <span class="chip-pts">+200</span>
-                  <span id="modal-pts-yellow" class="chip-status">--</span>
-                </div>
-                <div class="stage-point-chip" data-zone="blue">
-                  <span class="chip-label">Blue</span>
-                  <span class="chip-pts">+400</span>
-                  <span id="modal-pts-blue" class="chip-status">--</span>
-                </div>
-                <div class="stage-point-chip" data-zone="orange">
-                  <span class="chip-label">Orange</span>
-                  <span class="chip-pts">+600</span>
-                  <span id="modal-pts-orange" class="chip-status">--</span>
-                </div>
-                <div class="stage-point-chip" data-zone="red">
-                  <span class="chip-label">Red</span>
-                  <span class="chip-pts">+800</span>
-                  <span id="modal-pts-red" class="chip-status">--</span>
-                </div>
-                <div class="stage-point-chip" data-zone="purple">
-                  <span class="chip-label">Purple</span>
-                  <span class="chip-pts">+1000</span>
-                  <span id="modal-pts-purple" class="chip-status">--</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+      function draw() {
+        ctx.fillStyle = '#03060a';
+        ctx.fillRect(0, 0, width, height);
 
-        <!-- 6-Zone Progression Timeline Grid -->
-        <div class="detail-section">
-          <div class="section-header">
-            <h3>🗺 ZONE PROGRESSION & CHALLENGE-LEVEL COMPLETION</h3>
-            <span id="modal-completed-zones-pill" class="badge badge-subtle">0 / 6 Stages Completed</span>
-          </div>
-          <div id="modal-zones-grid" class="zones-grid">
-            <!-- 6 Zone Cards injected dynamically -->
-          </div>
-        </div>
+        // Cyber Grid Lines (subtle perspective / radar grid)
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.035)';
+        ctx.lineWidth = 1;
+        const gridSize = 50;
+        const offsetX = (Date.now() * 0.005) % gridSize;
+        const offsetY = (Date.now() * 0.005) % gridSize;
 
-        <!-- Purple ML Submissions History -->
-        <div class="detail-section">
-          <div class="section-header">
-            <h3>🔬 PURPLE ML EVALUATION & ESCAPE ATTEMPTS</h3>
-            <div class="section-badges">
-              <span id="modal-ml-quota-pill" class="badge badge-subtle">0 / 10 Used</span>
-              <span id="modal-ml-best-r2-pill" class="badge badge-subtle">Best R²: --</span>
-              <span id="modal-ml-escape-pill" class="badge badge-purple">Escape: Locked</span>
-            </div>
-          </div>
+        for (let x = offsetX; x < width; x += gridSize) {
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, height);
+          ctx.stroke();
+        }
+        for (let y = offsetY; y < height; y += gridSize) {
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(width, y);
+          ctx.stroke();
+        }
 
-          <div class="table-wrap">
-            <table class="sub-table">
-              <thead>
-                <tr>
-                  <th>Attempt</th>
-                  <th>Submitted At</th>
-                  <th>Player (Delegate)</th>
-                  <th>Filename</th>
-                  <th>R² Score</th>
-                  <th>MSE Score</th>
-                  <th>Escape Qualified (≥0.80)</th>
-                  <th>Status / Message</th>
-                </tr>
-              </thead>
-              <tbody id="modal-ml-subs-tbody">
-                <tr>
-                  <td colspan="8" class="text-center text-muted">No ML submissions recorded for this team.</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
+        // Radar Circles from Center
+        const cx = width / 2;
+        const cy = height / 2;
+        const maxRadius = Math.max(width, height) * 0.65;
 
-        <!-- Score Ledger Audit Trail -->
-        <div class="detail-section">
-          <div class="section-header">
-            <h3>📜 SCORE LEDGER AUDIT TRAIL</h3>
-            <span id="modal-ledger-count-pill" class="badge badge-subtle">0 Entries</span>
-          </div>
+        for (let r = 120; r < maxRadius; r += 140) {
+          ctx.beginPath();
+          ctx.arc(cx, cy, r, 0, Math.PI * 2);
+          ctx.strokeStyle = 'rgba(0, 240, 255, 0.03)';
+          ctx.stroke();
+        }
 
-          <div class="table-wrap">
-            <table class="sub-table">
-              <thead>
-                <tr>
-                  <th>Time (UTC)</th>
-                  <th>Points</th>
-                  <th>Source Type</th>
-                  <th>Source ID</th>
-                  <th>Delegate ID</th>
-                  <th>Idempotency Key</th>
-                </tr>
-              </thead>
-              <tbody id="modal-score-ledger-tbody">
-                <tr>
-                  <td colspan="6" class="text-center text-muted">No score ledger records found.</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
+        // Radar Sweep Line
+        radarAngle += 0.008;
+        const sweepX = cx + Math.cos(radarAngle) * maxRadius;
+        const sweepY = cy + Math.sin(radarAngle) * maxRadius;
+        const grad = ctx.createRadialGradient(cx, cy, 10, cx, cy, maxRadius);
+        grad.addColorStop(0, 'rgba(0, 240, 255, 0.15)');
+        grad.addColorStop(1, 'rgba(0, 240, 255, 0)');
 
-      <!-- Modal Footer -->
-      <div class="modal-footer">
-        <button id="modal-close-footer-btn" class="btn btn-secondary">Close Inspection</button>
-      </div>
-    </div>
-  </div>
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.arc(cx, cy, maxRadius, radarAngle - 0.25, radarAngle);
+        ctx.lineTo(cx, cy);
+        ctx.fillStyle = grad;
+        ctx.fill();
+
+        // Crosshairs at center
+        ctx.strokeStyle = 'rgba(0, 240, 255, 0.18)';
+        ctx.beginPath();
+        ctx.moveTo(cx - 30, cy); ctx.lineTo(cx + 30, cy);
+        ctx.moveTo(cx, cy - 30); ctx.lineTo(cx, cy + 30);
+        ctx.stroke();
+
+        // Draw and connect particles
+        for (let i = 0; i < particles.length; i++) {
+          const p = particles[i];
+          p.x += p.vx;
+          p.y += p.vy;
+          if (p.x < 0) p.x = width;
+          if (p.x > width) p.x = 0;
+          if (p.y < 0) p.y = height;
+          if (p.y > height) p.y = 0;
+          p.pulse += 0.02;
+
+          const currentAlpha = p.alpha * (0.6 + 0.4 * Math.sin(p.pulse));
+
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(0, 240, 255, ${currentAlpha})`;
+          ctx.fill();
+
+          // Connect nearby particles
+          for (let j = i + 1; j < particles.length; j++) {
+            const p2 = particles[j];
+            const dx = p.x - p2.x;
+            const dy = p.y - p2.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < 100) {
+              ctx.beginPath();
+              ctx.moveTo(p.x, p.y);
+              ctx.lineTo(p2.x, p2.y);
+              ctx.strokeStyle = `rgba(56, 189, 248, ${(1 - dist / 100) * 0.12})`;
+              ctx.stroke();
+            }
+          }
+        }
+
+        requestAnimationFrame(draw);
+      }
+      draw();
+    })();
+
+    // -----------------------------------------------------------------
+    // 2. Audio Transmission Waveform Visualizer
+    // -----------------------------------------------------------------
+    (function initWaveform() {
+      const canvas = document.getElementById('wave-canvas');
+      const ctx = canvas.getContext('2d');
+      canvas.width = 500;
+      canvas.height = 36;
+
+      const bars = 48;
+      let phase = 0;
+
+      function renderWave() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        phase += 0.04;
+
+        const barWidth = canvas.width / bars;
+        for (let i = 0; i < bars; i++) {
+          const distanceToCenter = Math.abs(i - bars / 2) / (bars / 2);
+          const damping = 1 - Math.pow(distanceToCenter, 1.5);
+          
+          // Harmonic wave simulation
+          const h1 = Math.sin(i * 0.35 + phase) * 10;
+          const h2 = Math.cos(i * 0.6 - phase * 1.3) * 6;
+          const h3 = Math.sin(phase * 2 + i * 0.1) * 3;
+          const height = Math.max(3, (Math.abs(h1 + h2 + h3) * damping));
+
+          const x = i * barWidth;
+          const y = (canvas.height - height) / 2;
+
+          const grad = ctx.createLinearGradient(0, y, 0, y + height);
+          grad.addColorStop(0, '#00f0ff');
+          grad.addColorStop(0.5, '#38bdf8');
+          grad.addColorStop(1, '#a855f7');
+
+          ctx.fillStyle = grad;
+          ctx.fillRect(x + 2, y, barWidth - 4, height);
+        }
+        requestAnimationFrame(renderWave);
+      }
+      renderWave();
+    })();
+
+    // -----------------------------------------------------------------
+    // 3. Subtle periodic cyber glitch effect on title
+    // -----------------------------------------------------------------
+    (function initGlitch() {
+      const title = document.getElementById('glitch-title');
+      setInterval(() => {
+        if (!title) return;
+        title.style.transform = `translate(${(Math.random() - 0.5) * 4}px, ${(Math.random() - 0.5) * 3}px)`;
+        title.style.filter = 'drop-shadow(2px 0 #ff0055) drop-shadow(-2px 0 #00ffff)';
+        setTimeout(() => {
+          title.style.transform = 'none';
+          title.style.filter = 'none';
+        }, 120);
+      }, 4200);
+    })();
+  </script>
 </body>
 </html>

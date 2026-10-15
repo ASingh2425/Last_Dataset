@@ -1,24 +1,11 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "cleanUrls": true,
-  "rewrites": [
+  "redirects": [
     {
-      "source": "/purple",
-      "destination": "/purple/index.html"
-    },
-    {
-      "source": "/admin",
-      "destination": "/admin/index.html"
-    },
-    {
-      "source": "/api/(.*)",
-      "destination": "/server.js?_path=/api/$1"
+      "source": "/(.*)",
+      "destination": "https://the-last-dataset-jqpr.vercel.app/",
+      "permanent": false
     }
-  ],
-  "functions": {
-    "server.js": {
-      "maxDuration": 30,
-      "includeFiles": "{public/**,config/**,server_data/**,data/**}"
-    }
-  }
+  ]
 }
