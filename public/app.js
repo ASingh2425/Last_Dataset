@@ -196,6 +196,17 @@
         sub.textContent = 'COMPLETE THE SANCTUARY STORYLINE & SOLVE GATE CTF TO ACCESS YELLOW ZONE';
       } else if (zoneId === 'blue') {
         sub.textContent = 'CLEAR ALL 5 YELLOW ZONE CTFS & RETRIEVE COMMUNITY FRAGMENT TO ACCESS BLUE ZONE';
+      } else if (zoneId === 'orange' && hub?.zones?.find((z) => z.id === 'yellow')?.state === 'cleared') {
+        sub.innerHTML = 'BLUE ZONE REQUIRED TO ACCESS ORANGE ZONE.<br><button id="sync-blue-btn" class="btn-blue-sync" style="margin-top:6px;">SOLVED BLUE? SYNC & UNLOCK ORANGE ZONE ↻</button>';
+        const syncBtn = $('#sync-blue-btn');
+        if (syncBtn) {
+          syncBtn.onclick = async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const synced = await syncBlueZone({ silent: false });
+            if (synced) travelToZone('orange');
+          };
+        }
       } else if (zoneId === 'red' && hub?.zones?.find((z) => z.id === 'blue')?.state === 'cleared') {
         sub.innerHTML = 'ORANGE ZONE REQUIRED TO ACCESS RED ZONE.<br><button id="sync-orange-btn" class="btn-orange-sync" style="margin-top:6px;">SOLVED ORANGE? SYNC & UNLOCK RED ZONE ↻</button>';
         const syncBtn = $('#sync-orange-btn');
@@ -236,6 +247,42 @@
     red: 'https://red-purple-slideshow.vercel.app/'
   };
 
+  async function syncBlueZone(options = {}) {
+    if (!hub?.authenticated) {
+      if (!options.silent) toast('AUTHENTICATION REQUIRED: Log in with your team credentials first.', true);
+      return false;
+    }
+    const teamId = hub?.team?.id;
+    if (!teamId) return false;
+
+    const isYellowDone = hub?.zones?.find((z) => z.id === 'yellow')?.state === 'cleared' || hub?.datasets?.includes('community_final');
+    if (!isYellowDone) {
+      if (!options.silent) toast('PREREQUISITE UNMET: Clear Yellow Zone first before syncing Blue Sector.', true);
+      return false;
+    }
+
+    try {
+      if (!options.silent) toast('SYNCHRONIZING BLUE ZONE WITH CENTRAL VAULT...');
+      const res = await api('/api/blue/complete', {
+        method: 'POST',
+        body: { teamId, delegateId: hub.player?.delegateId || 'OPERATOR' }
+      });
+      if (res && (res.ok || res.bootstrap)) {
+        applyBootstrap(res.bootstrap || res, { animate: true });
+        renderMapNodes();
+        storageRemove('tld_blue_launched');
+        toast('BLUE SECTOR SYNCHRONIZED · ORANGE ZONE & RADIO DATASET UNLOCKED!');
+        return true;
+      } else {
+        if (!options.silent) toast(res?.message || 'Could not verify Blue Zone clearance.', true);
+        return false;
+      }
+    } catch (err) {
+      if (!options.silent) toast(err.message || 'Error synchronizing Blue Zone.', true);
+      return false;
+    }
+  }
+
   async function syncOrangeZone(options = {}) {
     if (!hub?.authenticated) {
       if (!options.silent) toast('AUTHENTICATION REQUIRED: Log in with your team credentials first.', true);
@@ -244,7 +291,12 @@
     const teamId = hub?.team?.id;
     if (!teamId) return false;
 
-    const isBlueDone = hub?.zones?.find((z) => z.id === 'blue')?.state === 'cleared' || hub?.datasets?.includes('radio_final');
+    let isBlueDone = hub?.zones?.find((z) => z.id === 'blue')?.state === 'cleared' || hub?.datasets?.includes('radio_final');
+    if (!isBlueDone) {
+      // Auto-heal: attempt to sync blue zone first if team reached orange
+      await syncBlueZone({ silent: true });
+      isBlueDone = hub?.zones?.find((z) => z.id === 'blue')?.state === 'cleared' || hub?.datasets?.includes('radio_final');
+    }
     if (!isBlueDone) {
       if (!options.silent) toast('PREREQUISITE UNMET: Clear Blue Zone first before syncing Orange Sector.', true);
       return false;
@@ -280,7 +332,20 @@
     }
     const zone = zoneById(zoneId); if (!zone) return;
     if (!zone.unlocked) {
-      if (zoneId === 'red' && hub?.zones?.find((z) => z.id === 'blue')?.state === 'cleared') {
+      if (zoneId === 'orange' && hub?.zones?.find((z) => z.id === 'yellow')?.state === 'cleared') {
+        const synced = await syncBlueZone({ silent: false });
+        if (synced) {
+          const updatedOrange = zoneById('orange');
+          if (updatedOrange && updatedOrange.unlocked) {
+            return travelToZone('orange');
+          }
+        }
+      }
+      if (zoneId === 'red') {
+        const isBlueDone = hub?.zones?.find((z) => z.id === 'blue')?.state === 'cleared' || hub?.datasets?.includes('radio_final');
+        if (!isBlueDone && hub?.zones?.find((z) => z.id === 'yellow')?.state === 'cleared') {
+          await syncBlueZone({ silent: true });
+        }
         const synced = await syncOrangeZone({ silent: false });
         if (synced) {
           const updatedRed = zoneById('red');
@@ -308,6 +373,9 @@
     $('#map-region-label').textContent = `REGION ${String(zone.order).padStart(2, '0')} / ${zone.name}`;
     $('#map-region-subtitle').textContent = zone.tagline;
 
+    if (zoneId === 'blue') {
+      storageSet('tld_blue_launched', 'true');
+    }
     if (zoneId === 'orange') {
       storageSet('tld_orange_launched', 'true');
     }
@@ -527,6 +595,22 @@
       const syncBtn = $('#hud-sync-orange-btn');
       if (launchBtn) launchBtn.onclick = (e) => { e.stopPropagation(); travelToZone('orange'); };
       if (syncBtn) syncBtn.onclick = (e) => { e.stopPropagation(); syncOrangeZone(); };
+    } else if (isYellowDone && !isBlueDone) {
+      $('#hud-objective-title').textContent = 'BLUE SECTOR ACTIVE';
+      $('#hud-objective-copy').innerHTML = `
+        <div class="blue-sync-container">
+          <div class="blue-sync-title"><span class="blue-sync-dot"></span>FACILITY IN PROGRESS</div>
+          <div style="font-size:7px;color:#a0ada0;line-height:1.4;">Solve the radio terminals in Blue Zone, then sync to unlock Orange Zone:</div>
+          <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:4px;">
+            <button id="hud-launch-blue-btn" class="btn-blue-launch">LAUNCH ↗</button>
+            <button id="hud-sync-blue-btn" class="btn-blue-sync">SYNC & UNLOCK ORANGE ↻</button>
+          </div>
+        </div>
+      `;
+      const launchBtn = $('#hud-launch-blue-btn');
+      const syncBtn = $('#hud-sync-blue-btn');
+      if (launchBtn) launchBtn.onclick = (e) => { e.stopPropagation(); travelToZone('blue'); };
+      if (syncBtn) syncBtn.onclick = (e) => { e.stopPropagation(); syncBlueZone(); };
     } else {
       $('#hud-objective-title').textContent = hub.progress.complete ? 'RECOVERY COMPLETE' : `ENTER ${current.name}`;
       $('#hud-objective-copy').textContent = hub.progress.complete ? 'Every surviving record has been recovered.' : current.state === 'cleared' ? 'Quarantine breached. Proceed to next sector.' : 'Recover the surviving data fragment.';
@@ -536,6 +620,10 @@
     $('#hud-zone-list').innerHTML = hub.zones.map((zone) => {
       let actionLabel = zone.state === 'locked' ? 'LOCKED' : zone.state === 'cleared' ? '✓ CLEAR' : 'ENTER ↗';
       let extraSync = '';
+      if (zone.id === 'blue' && isYellowDone && !isBlueDone) {
+        actionLabel = 'ACTIVE';
+        extraSync = `<button class="btn-blue-sync" style="padding:2px 6px;font-size:7px;margin-left:4px;" id="zone-row-sync-blue" title="Sync Blue Zone & unlock Orange Zone">SYNC ↻</button>`;
+      }
       if (zone.id === 'orange' && isBlueDone && !isOrangeDone) {
         actionLabel = 'ACTIVE';
         extraSync = `<button class="btn-orange-sync" style="padding:2px 6px;font-size:7px;margin-left:4px;" id="zone-row-sync-orange" title="Sync Orange Zone & unlock Red Zone">SYNC ↻</button>`;
@@ -553,7 +641,10 @@
     }).join('');
     queryAll('.hud-zone-row').forEach((row) => {
       row.addEventListener('click', (e) => {
-        if (e.target.id === 'zone-row-sync-orange') {
+        if (e.target.id === 'zone-row-sync-blue') {
+          e.stopPropagation();
+          syncBlueZone();
+        } else if (e.target.id === 'zone-row-sync-orange') {
           e.stopPropagation();
           syncOrangeZone();
         } else if (row.dataset.hudZone) {
@@ -590,6 +681,11 @@
             <span style="font-weight:600;color:#f0fdf4;">◈ ${escapeHTML(d.file)}</span>
             <span style="color:#4ade80;font-weight:bold;letter-spacing:0.5px;">DOWNLOAD ⤓</span>
           </a>`;
+        } else if (d.key === 'radio_final' && isYellowDone && !isBlueDone) {
+          return `<div class="hud-zone-row" style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;margin-bottom:4px;font-size:11px;background:rgba(86,200,255,0.08);border:1px dashed rgba(86,200,255,0.5);border-radius:4px;">
+            <span style="color:#7dd3fc;">◇ ${escapeHTML(d.file)}</span>
+            <button id="btn-sync-dataset-blue" class="btn-blue-sync" style="padding:2px 7px;font-size:7px;">SYNC & UNLOCK ↻</button>
+          </div>`;
         } else if (d.key === 'forensics_final' && isBlueDone && !isOrangeDone) {
           return `<div class="hud-zone-row" style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;margin-bottom:4px;font-size:11px;background:rgba(255,139,61,0.08);border:1px dashed rgba(255,139,61,0.5);border-radius:4px;">
             <span style="color:#fdba74;">◇ ${escapeHTML(d.file)}</span>
@@ -602,6 +698,8 @@
           </div>`;
         }
       }).join('');
+      const datasetBlueSyncBtn = $('#btn-sync-dataset-blue');
+      if (datasetBlueSyncBtn) datasetBlueSyncBtn.onclick = (e) => { e.stopPropagation(); syncBlueZone(); };
       const datasetSyncBtn = $('#btn-sync-dataset-orange');
       if (datasetSyncBtn) datasetSyncBtn.onclick = (e) => { e.stopPropagation(); syncOrangeZone(); };
     }
@@ -813,9 +911,12 @@
     const handleTabRevisit = async () => {
       const next = await refreshBootstrap({ animate: true });
       const earned = next?.datasets || [];
+      const yellowDone = earned.includes('community_final') || next?.zones?.some((z) => z.id === 'yellow' && z.state === 'cleared');
       const blueDone = earned.includes('radio_final') || next?.zones?.some((z) => z.id === 'blue' && z.state === 'cleared');
       const orangeDone = earned.includes('forensics_final') || next?.zones?.some((z) => z.id === 'orange' && z.state === 'cleared');
-      if (blueDone && !orangeDone && storageGet('tld_orange_launched') === 'true') {
+      if (yellowDone && !blueDone && storageGet('tld_blue_launched') === 'true') {
+        await syncBlueZone({ silent: true });
+      } else if (blueDone && !orangeDone && storageGet('tld_orange_launched') === 'true') {
         await syncOrangeZone({ silent: true });
       }
     };
@@ -824,9 +925,11 @@
       if (document.visibilityState === 'visible') handleTabRevisit();
     });
     window.addEventListener('message', async (event) => {
-      if (event.data?.type === 'ZONE_COMPLETED' || event.data?.type === 'ORANGE_ZONE_COMPLETED' || event.data?.type === 'FORENSICS_COMPLETED' || event.data?.type === 'SYNC_ORANGE') {
-        const zId = event.data?.zoneId || 'orange';
-        if (zId === 'orange' && hub?.team?.id) {
+      if (event.data?.type === 'ZONE_COMPLETED' || event.data?.type === 'ORANGE_ZONE_COMPLETED' || event.data?.type === 'BLUE_ZONE_COMPLETED' || event.data?.type === 'FORENSICS_COMPLETED' || event.data?.type === 'SYNC_ORANGE' || event.data?.type === 'SYNC_BLUE') {
+        const zId = event.data?.zoneId || (event.data?.type === 'BLUE_ZONE_COMPLETED' || event.data?.type === 'SYNC_BLUE' ? 'blue' : 'orange');
+        if (zId === 'blue' && hub?.team?.id) {
+          await syncBlueZone({ silent: false });
+        } else if (zId === 'orange' && hub?.team?.id) {
           await syncOrangeZone({ silent: false });
         } else {
           await refreshBootstrap({ animate: true });
@@ -951,6 +1054,8 @@
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('sync') === 'orange' || urlParams.get('sync') === 'orange_success' || urlParams.get('completed') === 'orange') {
           setTimeout(() => syncOrangeZone({ silent: false }), 300);
+        } else if (urlParams.get('sync') === 'blue' || urlParams.get('sync') === 'blue_success' || urlParams.get('completed') === 'blue') {
+          setTimeout(() => syncBlueZone({ silent: false }), 300);
         }
       } else {
         hub = data;
@@ -961,6 +1066,8 @@
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('sync') === 'orange' || urlParams.get('sync') === 'orange_success' || urlParams.get('completed') === 'orange') {
           setTimeout(() => syncOrangeZone({ silent: false }), 300);
+        } else if (urlParams.get('sync') === 'blue' || urlParams.get('sync') === 'blue_success' || urlParams.get('completed') === 'blue') {
+          setTimeout(() => syncBlueZone({ silent: false }), 300);
         }
       }
     } catch (error) {

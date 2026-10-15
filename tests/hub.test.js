@@ -281,3 +281,52 @@ test('Orange Zone completion unlocks Red Zone and forensics dataset via POST, GE
   assert.equal(serviceRes.payload.ok, true);
 });
 
+test('Blue Zone completion unlocks Orange Zone and radio_final dataset via POST, GET, and service integration', async (t) => {
+  const { req } = await withServer(t);
+
+  // 0. Unauthenticated GET /api/blue/complete returns 401
+  let unauthRes = await req('/api/blue/complete', { method: 'GET' });
+  assert.equal(unauthRes.response.status, 401);
+  assert.equal(unauthRes.payload.error, 'AUTH_REQUIRED');
+
+  // 1. Register team
+  let reg = await req('/api/register', { method: 'POST', body: { teamId: 'BLUE-TEST-01', teamName: 'Blue Signals' } });
+  assert.equal(reg.response.status, 200);
+  const cookie = reg.cookie;
+
+  // 2. Clear Sanctuary and Yellow
+  await req('/api/dev/solve', { method: 'POST', body: { ctfId: 'yellow-01' }, cookie });
+  await req('/api/zone/complete', { method: 'POST', body: { zoneId: 'yellow' }, cookie });
+
+  // 3. Complete Blue via POST /api/blue/complete
+  let blueRes = await req('/api/blue/complete', { method: 'POST', body: { teamId: 'BLUE-TEST-01' }, cookie });
+  assert.equal(blueRes.response.status, 200);
+  assert.equal(blueRes.payload.ok, true);
+  assert.equal(blueRes.payload.zoneId, 'blue');
+
+  // Verify bootstrap has Orange unlocked and radio_final awarded
+  let boot = await req('/api/bootstrap', { cookie });
+  assert.ok(boot.payload.datasets.includes('radio_final'), 'radio_final should be awarded');
+  const blueZone = boot.payload.zones.find((z) => z.id === 'blue');
+  assert.equal(blueZone.state, 'cleared');
+  const orangeZone = boot.payload.zones.find((z) => z.id === 'orange');
+  assert.equal(orangeZone.unlocked, true);
+
+  // 4. Verify GET /api/blue/complete works idempotently
+  let getRes = await req('/api/blue/complete?teamId=BLUE-TEST-01', { method: 'GET', cookie });
+  assert.equal(getRes.response.status, 200);
+  assert.equal(getRes.payload.ok, true);
+
+  // 5. Test service integration with service token (Bearer)
+  const serviceRes = await req('/api/integrations/blue-complete', {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer the-last-dataset-2026-production-service-token-manipal',
+      'x-service-token': 'the-last-dataset-2026-production-service-token-manipal'
+    },
+    body: { teamId: 'BLUE-TEST-01' }
+  });
+  assert.equal(serviceRes.response.status, 200);
+  assert.equal(serviceRes.payload.ok, true);
+});
+
